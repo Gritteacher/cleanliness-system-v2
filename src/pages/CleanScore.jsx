@@ -15,7 +15,7 @@ export default function CleanScore({ data, setData, user, refreshData }) {
   const initialDate = todayISO();
   const isAdmin = user.role === 'ADMIN';
   const [recordDate, setRecordDate] = useState(initialDate);
-  const [dutyColorId, setDutyColorId] = useState(getInitialDutyTeamId(initialDate));
+  const [dutyColorId, setDutyColorId] = useState(isAdmin ? colorTeams[0].id : getInitialDutyTeamId(initialDate));
   const [adminEvaluatorColorId, setAdminEvaluatorColorId] = useState(colorTeams[0].id);
   const areas = useMemo(() => getAreasForTeam(data, dutyColorId), [data, dutyColorId]);
   const [areaId, setAreaId] = useState('');
@@ -29,14 +29,25 @@ export default function CleanScore({ data, setData, user, refreshData }) {
   const evaluatorColorId = isAdmin ? adminEvaluatorColorId : user.colorTeamId;
   const dutyTeam = getTeam(dutyColorId);
   const evaluatorTeam = getTeam(evaluatorColorId);
+  const dateDutyTeam = getDutyTeamForDate(recordDate);
   const record = area ? getDutyRecord(data, recordDate, area.id, dutyColorId) : null;
   const scores = area ? getScores(data, recordDate, area.id, dutyColorId) : [];
   const existingScore = area ? getScoreByEvaluator(data, recordDate, area.id, dutyColorId, evaluatorColorId) : null;
 
   function handleDateChange(value) {
-    const teamIdFromDate = getInitialDutyTeamId(value);
     setRecordDate(value);
-    setDutyColorId(teamIdFromDate);
+
+    if (!isAdmin) {
+      const teamIdFromDate = getInitialDutyTeamId(value);
+      setDutyColorId(teamIdFromDate);
+    }
+
+    setAreaId('');
+    setMessage('');
+  }
+
+  function handleDutyColorChange(value) {
+    setDutyColorId(value);
     setAreaId('');
     setMessage('');
   }
@@ -101,7 +112,7 @@ export default function CleanScore({ data, setData, user, refreshData }) {
       }
 
       setMessage(isAdmin
-        ? `Admin บันทึกคะแนนแทน${evaluatorTeam?.shortName || evaluatorColorId}ลง Supabase เรียบร้อยแล้ว`
+        ? `Admin บันทึกคะแนนแทน${evaluatorTeam?.shortName || evaluatorColorId} สำหรับ${dutyTeam?.shortName || dutyColorId}ลง Supabase เรียบร้อยแล้ว`
         : 'บันทึกคะแนนความสะอาดลง Supabase เรียบร้อยแล้ว'
       );
     } catch (error) {
@@ -121,14 +132,19 @@ export default function CleanScore({ data, setData, user, refreshData }) {
         <div>
           <span className="eyebrow">Clean Score</span>
           <h2>ให้คะแนนความสะอาด</h2>
-          <p>เลือกวันที่แล้วระบบจะแสดงคณะสีเวรของวันนั้นอัตโนมัติ</p>
+          <p>
+            {isAdmin
+              ? 'Admin เลือกวันที่ คณะสีเวร และสิทธิ์ผู้ประเมินได้เอง ไม่ล็อกตามวัน'
+              : 'เลือกวันที่แล้วระบบจะแสดงคณะสีเวรของวันนั้นอัตโนมัติ'}
+          </p>
           <div className="badge-row">
             <TeamBadge teamId={evaluatorTeam?.id} label={`ผู้ประเมิน: ${evaluatorTeam?.shortName || 'Admin'}`} />
-            {dutyTeam ? <TeamBadge teamId={dutyTeam.id} label={`เวรที่ตรวจ: ${dutyTeam.shortName}`} /> : null}
+            {dutyTeam ? <TeamBadge teamId={dutyTeam.id} label={`คณะสีที่ตรวจ: ${dutyTeam.shortName}`} /> : null}
+            {isAdmin && dateDutyTeam ? <TeamBadge teamId={dateDutyTeam.id} label={`เวรตามวันจริง: ${dateDutyTeam.shortName}`} /> : null}
           </div>
           {isAdmin ? (
             <div className="alert info compact-alert">
-              Admin สามารถเลือกใช้สิทธิ์แทนหัวหน้าคณะสีใดก็ได้ในการให้คะแนน
+              Admin ไม่ถูกล็อกตามวัน สามารถเลือกคณะสีใดก็ได้ในทุกวันที่ต้องการบันทึกคะแนน
             </div>
           ) : null}
         </div>
@@ -144,8 +160,8 @@ export default function CleanScore({ data, setData, user, refreshData }) {
           </label>
 
           <label>
-            คณะสีเวรตามวันที่
-            <select value={dutyColorId} disabled>
+            {isAdmin ? 'Admin เลือกคณะสีที่ต้องการให้คะแนน' : 'คณะสีเวรตามวันที่'}
+            <select value={dutyColorId} disabled={!isAdmin} onChange={(e) => handleDutyColorChange(e.target.value)}>
               {colorTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
@@ -178,7 +194,7 @@ export default function CleanScore({ data, setData, user, refreshData }) {
           <strong>วันที่เลือก: {formatThaiDate(recordDate)} • {getDayLabel(recordDate)}</strong>
           <p>
             {isAdmin
-              ? `Admin กำลังใช้สิทธิ์ประเมินแทน${evaluatorTeam?.shortName || ''}`
+              ? `Admin กำลังให้คะแนน${dutyTeam?.shortName || ''} โดยใช้สิทธิ์แทน${evaluatorTeam?.shortName || ''}`
               : 'ระบบล็อกคณะสีเวรตามวันที่โดยอัตโนมัติ เพื่อให้การให้คะแนนตรงกับเวรประจำวัน'}
           </p>
         </div>

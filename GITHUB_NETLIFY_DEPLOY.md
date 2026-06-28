@@ -19,7 +19,7 @@ git init
 git add .
 git commit -m "Initial React Supabase app"
 git branch -M main
-git remote add origin https://github.com/Gritteacher/cleanliness-system-v2.git
+git remote add origin https://github.com/YOUR_USERNAME/cleanliness-system-v2.git
 git push -u origin main
 ```
 
