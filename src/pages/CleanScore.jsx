@@ -112,8 +112,8 @@ export default function CleanScore({ data, setData, user, refreshData }) {
       }
 
       setMessage(isAdmin
-        ? `Admin บันทึกคะแนนแทน${evaluatorTeam?.shortName || evaluatorColorId} สำหรับ${dutyTeam?.shortName || dutyColorId}ลง Supabase เรียบร้อยแล้ว`
-        : 'บันทึกคะแนนความสะอาดลง Supabase เรียบร้อยแล้ว'
+        ? `Admin บันทึกคะแนนแทน${evaluatorTeam?.shortName || evaluatorColorId} สำหรับ${dutyTeam?.shortName || dutyColorId}ในระบบเรียบร้อยแล้ว`
+        : 'บันทึกคะแนนความสะอาดในระบบเรียบร้อยแล้ว'
       );
     } catch (error) {
       setMessage(`บันทึกไม่สำเร็จ: ${error.message}`);

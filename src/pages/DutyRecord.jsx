@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { colorTeams, getTeam } from '../data/colorTeams.js';
 import TeamBadge from '../components/TeamBadge.jsx';
 import PhotoPreview from '../components/PhotoPreview.jsx';
 import { todayISO, getDutyTeamForDate, formatThaiDate, getDayLabel } from '../utils/dateUtils.js';
@@ -23,12 +24,21 @@ const defaultForm = {
   photoThumbPath: ''
 };
 
+function getInitialDutyColorId(dateString, isAdmin) {
+  const team = getDutyTeamForDate(dateString);
+  if (team) return team.id;
+  return isAdmin ? colorTeams[0].id : '';
+}
+
 export default function DutyRecord({ data, setData, user, navigate, refreshData }) {
-  const [recordDate, setRecordDate] = useState(todayISO());
-  const dutyTeam = getDutyTeamForDate(recordDate);
   const isAdmin = user.role === 'ADMIN';
-  const isOwnerDuty = dutyTeam && (isAdmin || (user.role === 'PRESIDENT' && user.colorTeamId === dutyTeam.id));
-  const areas = useMemo(() => isOwnerDuty ? getAreasForTeam(data, dutyTeam.id) : [], [data, dutyTeam, isOwnerDuty]);
+  const [recordDate, setRecordDate] = useState(todayISO());
+  const [adminDutyColorId, setAdminDutyColorId] = useState(getInitialDutyColorId(todayISO(), isAdmin));
+  const dateDutyTeam = getDutyTeamForDate(recordDate);
+  const dutyColorId = isAdmin ? adminDutyColorId : dateDutyTeam?.id;
+  const dutyTeam = getTeam(dutyColorId);
+  const isOwnerDuty = Boolean(dutyTeam) && (isAdmin || (user.role === 'PRESIDENT' && user.colorTeamId === dutyTeam.id));
+  const areas = useMemo(() => isOwnerDuty ? getAreasForTeam(data, dutyTeam.id) : [], [data, dutyTeam?.id, isOwnerDuty]);
   const [areaId, setAreaId] = useState('');
   const area = areas.find((item) => item.id === areaId) || areas[0];
   const selectedAreaId = area?.id || '';
@@ -54,6 +64,16 @@ export default function DutyRecord({ data, setData, user, navigate, refreshData 
     }
     setMessage('');
   }, [existing?.id, recordDate, selectedAreaId, dutyTeam?.id]);
+
+  function handleDateChange(value) {
+    setRecordDate(value);
+    setAreaId('');
+
+    if (!isAdmin) return;
+
+    const nextTeam = getInitialDutyColorId(value, true);
+    setAdminDutyColorId(nextTeam);
+  }
 
   async function handleImage(event) {
     const file = event.target.files?.[0];
@@ -170,8 +190,8 @@ export default function DutyRecord({ data, setData, user, navigate, refreshData 
       }
 
       setMessage(isAdmin
-        ? `Admin บันทึกข้อมูลแทน${dutyTeam.shortName}ลง Supabase เรียบร้อยแล้ว`
-        : 'บันทึกข้อมูลการมาทำเวรลง Supabase เรียบร้อยแล้ว'
+        ? `Admin บันทึกข้อมูลแทน${dutyTeam.shortName}ในระบบเรียบร้อยแล้ว`
+        : 'บันทึกข้อมูลการมาทำเวรในระบบเรียบร้อยแล้ว'
       );
     } catch (error) {
       setMessage(`บันทึกไม่สำเร็จ: ${error.message}`);
@@ -189,21 +209,30 @@ export default function DutyRecord({ data, setData, user, navigate, refreshData 
           <span className="eyebrow">Duty Record</span>
           <h2>กรอกข้อมูลการมาทำเวร</h2>
           <p>{formatThaiDate(recordDate)} • {getDayLabel(recordDate)}</p>
-          {dutyTeam ? <TeamBadge teamId={dutyTeam.id} label={`เวรประจำวัน: ${dutyTeam.name}`} /> : <span className="chip muted">วันนี้ไม่มีเวรคณะสี</span>}
+          {dutyTeam ? <TeamBadge teamId={dutyTeam.id} label={`คณะสีที่บันทึก: ${dutyTeam.name}`} /> : <span className="chip muted">วันนี้ไม่มีเวรคณะสี</span>}
+          {isAdmin && dateDutyTeam ? <TeamBadge teamId={dateDutyTeam.id} label={`เวรตามวันจริง: ${dateDutyTeam.shortName}`} /> : null}
           {isAdmin ? (
             <div className="alert info compact-alert">
-              Admin สามารถเข้าแทนหัวหน้าคณะสีเจ้าของเวรของวันที่เลือกได้ทุกสี
+              Admin สามารถเลือกคณะสีและอัปโหลดรูปแทนหัวหน้าคณะสีได้
             </div>
           ) : null}
         </div>
         <div className="hero-actions">
           <label>
             เลือกวันที่
-            <input type="date" value={recordDate} onChange={(e) => {
-              setRecordDate(e.target.value);
-              setAreaId('');
-            }} />
+            <input type="date" value={recordDate} onChange={(e) => handleDateChange(e.target.value)} />
           </label>
+          {isAdmin ? (
+            <label>
+              Admin เลือกคณะสี
+              <select value={adminDutyColorId} onChange={(e) => {
+                setAdminDutyColorId(e.target.value);
+                setAreaId('');
+              }}>
+                {colorTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+              </select>
+            </label>
+          ) : null}
         </div>
       </div>
 
@@ -211,7 +240,7 @@ export default function DutyRecord({ data, setData, user, navigate, refreshData 
         <div className="empty-state owner-only-state">
           <h2>หน้านี้แสดงเฉพาะประธานคณะสีเจ้าของเวรเท่านั้น</h2>
           <p>
-            วันที่เลือกเป็นเวรของ {dutyTeam?.name || 'ไม่มีคณะสี'}
+            วันที่เลือกเป็นเวรของ {dateDutyTeam?.name || 'ไม่มีคณะสี'}
             ผู้ใช้งานที่ไม่ใช่เจ้าของเวรจะไม่สามารถดูหรือกรอกข้อมูลหน้านี้ได้
           </p>
           <div className="action-row">
@@ -297,7 +326,7 @@ export default function DutyRecord({ data, setData, user, navigate, refreshData 
             </label>
 
             <button className="btn btn-primary btn-wide" type="submit" disabled={busy}>
-              {busy ? 'กำลังบันทึก...' : isAdmin ? `บันทึกแทน${dutyTeam.shortName}` : 'บันทึกข้อมูลการมาทำเวร'}
+              {busy ? 'กำลังบันทึก...' : isAdmin ? `บันทึกและอัปโหลดรูปแทน${dutyTeam.shortName}` : 'บันทึกข้อมูลการมาทำเวร'}
             </button>
           </form>
         </>

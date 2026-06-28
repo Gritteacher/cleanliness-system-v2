@@ -3,7 +3,7 @@ import { defaultDutyAreas } from '../data/dutyAreas.js';
 
 function assertSupabase() {
   if (!isSupabaseConfigured || !supabase) {
-    throw new Error('ยังไม่ได้ตั้งค่า Supabase ในไฟล์ .env');
+    throw new Error('ยังไม่ได้ตั้งค่าการเชื่อมต่อระบบ');
   }
 }
 
@@ -372,4 +372,109 @@ export async function cleanupSelectedData(options = {}) {
   }
 
   return result;
+}
+
+
+function profileFromRow(row) {
+  return {
+    id: row.id,
+    username: row.username || '',
+    displayName: row.display_name || '',
+    role: row.role || 'PRESIDENT',
+    colorTeamId: row.color_team_id || '',
+    passwordNote: row.password_note || '',
+    updatedAt: row.updated_at
+  };
+}
+
+export async function listProfiles() {
+  assertSupabase();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('role', { ascending: true })
+    .order('username', { ascending: true });
+
+  if (error) throw error;
+  return (data || []).map(profileFromRow);
+}
+
+export async function updateProfileByAdmin(profileId, updates = {}) {
+  assertSupabase();
+
+  const row = {
+    username: String(updates.username || '').trim(),
+    display_name: String(updates.displayName || '').trim(),
+    password_note: updates.passwordNote || '',
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(row)
+    .eq('id', profileId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return profileFromRow(data);
+}
+
+export async function updateMyAccount(userId, updates = {}) {
+  assertSupabase();
+
+  const username = String(updates.username || '').trim();
+  const displayName = String(updates.displayName || '').trim();
+  const newPassword = String(updates.newPassword || '').trim();
+  const passwordNote = updates.passwordNote || '';
+
+  if (!username) {
+    throw new Error('กรุณากรอกชื่อผู้ใช้');
+  }
+
+  if (!displayName) {
+    throw new Error('กรุณากรอกชื่อแสดงในระบบ');
+  }
+
+  if (newPassword && newPassword.length < 6) {
+    throw new Error('รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร');
+  }
+
+  const profileRow = {
+    username,
+    display_name: displayName,
+    password_note: newPassword || passwordNote || '',
+    updated_at: new Date().toISOString()
+  };
+
+  const authUpdate = {};
+  if (newPassword) {
+    authUpdate.password = newPassword;
+  }
+
+  // เปลี่ยนชื่อผู้ใช้สำหรับการ Login โดยใช้รูปแบบ username@tsn.local
+  // ระบบจะเปลี่ยน email เฉพาะกรณีที่ต่างจากเดิม เพื่อลดการยืนยันซ้ำ
+  const newEmail = username.includes('@') ? username : `${username}@tsn.local`;
+  const { data: userData } = await supabase.auth.getUser();
+  if (userData?.user?.email !== newEmail) {
+    authUpdate.email = newEmail;
+  }
+
+  if (Object.keys(authUpdate).length) {
+    const { error: authError } = await supabase.auth.updateUser(authUpdate);
+    if (authError) {
+      throw authError;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(profileRow)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return profileFromRow(data);
 }

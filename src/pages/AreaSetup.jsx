@@ -37,7 +37,7 @@ export default function AreaSetup({ data, setData, refreshData }) {
       } catch {
         // cache
       }
-      setMessage('บันทึกข้อมูลพื้นที่ลง Supabase เรียบร้อยแล้ว');
+      setMessage('บันทึกข้อมูลพื้นที่ในระบบเรียบร้อยแล้ว');
     } catch (error) {
       setMessage(`บันทึกพื้นที่ไม่สำเร็จ: ${error.message}`);
     } finally {
@@ -60,7 +60,7 @@ export default function AreaSetup({ data, setData, refreshData }) {
   }
 
   function resetAllDemo() {
-    if (!confirm('ต้องการล้างข้อมูลที่บันทึกในเครื่องนี้หรือไม่? ข้อมูลใน Supabase จะไม่ถูกลบ')) return;
+    if (!confirm('ต้องการล้างข้อมูลที่บันทึกในเครื่องนี้หรือไม่? ข้อมูลในระบบ จะไม่ถูกลบ')) return;
     const next = resetDemoData();
     setData(next);
     setAreas(next.areas);

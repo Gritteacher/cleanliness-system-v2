@@ -11,6 +11,7 @@ import AdminAreaDetails from './pages/AdminAreaDetails.jsx';
 import AdminCompleteness from './pages/AdminCompleteness.jsx';
 import AdminPanel from './pages/AdminPanel.jsx';
 import AreaSetup from './pages/AreaSetup.jsx';
+import AccountSettings from './pages/AccountSettings.jsx';
 import { getCurrentUser, logout as authLogout } from './utils/auth.js';
 import { loadAppData, saveAppData } from './utils/storage.js';
 import { loadRemoteData } from './services/supabaseService.js';
@@ -45,13 +46,13 @@ export default function App() {
       try {
         const remote = await loadRemoteData();
         if (!remote.areas?.length) {
-          setSystemMessage('ยังไม่พบข้อมูลพื้นที่ใน Supabase');
+          setSystemMessage('ยังไม่พบข้อมูลพื้นที่ในระบบ');
           return;
         }
         setData(remote);
         saveAppData(remote);
       } catch (error) {
-        setSystemMessage(`ยังโหลดข้อมูลจาก Supabase ไม่สำเร็จ: ${error.message}`);
+        setSystemMessage(`ยังโหลดข้อมูลจากระบบไม่สำเร็จ: ${error.message}`);
       }
     }
 
@@ -134,6 +135,9 @@ export default function App() {
       break;
     case '/clean-score':
       page = requireAuth(<CleanScore {...pageProps} />);
+      break;
+    case '/account':
+      page = requireAuth(<AccountSettings {...pageProps} setUser={actions.setUser} />);
       break;
     case '/admin-summary':
       page = requireAuth(<AdminSummary {...pageProps} />, true);

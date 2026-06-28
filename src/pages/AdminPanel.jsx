@@ -1,10 +1,17 @@
-import { useMemo, useState } from 'react';
-import { colorTeams } from '../data/colorTeams.js';
+import { useEffect, useMemo, useState } from 'react';
+import { colorTeams, getTeam } from '../data/colorTeams.js';
 import TeamBadge from '../components/TeamBadge.jsx';
 import { todayISO } from '../utils/dateUtils.js';
 import { STATUS_LABELS, calculateStudentScore } from '../utils/scoring.js';
 import { addLog } from '../utils/storage.js';
-import { deleteDutyRecordRemote, upsertDutyRecord, insertEditLog, cleanupSelectedData } from '../services/supabaseService.js';
+import {
+  deleteDutyRecordRemote,
+  upsertDutyRecord,
+  insertEditLog,
+  cleanupSelectedData,
+  listProfiles,
+  updateProfileByAdmin
+} from '../services/supabaseService.js';
 
 const CLEANUP_DEFAULTS = {
   dutyRecords: false,
@@ -24,6 +31,23 @@ export default function AdminPanel({ data, setData, user, refreshData }) {
   const [cleanupOptions, setCleanupOptions] = useState(CLEANUP_DEFAULTS);
   const [cleanupConfirm, setCleanupConfirm] = useState('');
   const [cleanupBusy, setCleanupBusy] = useState(false);
+  const [profiles, setProfiles] = useState([]);
+  const [profileBusy, setProfileBusy] = useState(false);
+
+  useEffect(() => {
+    async function loadProfiles() {
+      try {
+        const rows = await listProfiles();
+        setProfiles(rows);
+      } catch {
+        setProfiles([]);
+      }
+    }
+
+    if (user?.role === 'ADMIN') {
+      loadProfiles();
+    }
+  }, [user?.id]);
 
   const dutyRows = useMemo(() => data.dutyRecords.filter((record) => {
     const area = data.areas.find((item) => item.id === record.areaId);
@@ -45,10 +69,35 @@ export default function AdminPanel({ data, setData, user, refreshData }) {
     if (cleanupOptions.dutyRecords) labels.push('ข้อมูลการมาทำเวร');
     if (cleanupOptions.cleanScores) labels.push('คะแนนความสะอาด');
     if (cleanupOptions.editLogs) labels.push('ประวัติการแก้ไข');
-    if (cleanupOptions.storageFiles) labels.push('รูปภาพใน Storage');
+    if (cleanupOptions.storageFiles) labels.push('รูปภาพในระบบ');
     if (cleanupOptions.dutyAreas) labels.push('ตารางพื้นที่/ห้อง');
     if (cleanupOptions.localCache) labels.push('Cache ใน Browser');
     return labels;
+  }
+
+  function updateProfileField(profileId, field, value) {
+    setProfiles((prev) => prev.map((profile) => (
+      profile.id === profileId ? { ...profile, [field]: value } : profile
+    )));
+  }
+
+  async function saveProfile(profile) {
+    setProfileBusy(true);
+    setMessage('');
+    try {
+      const updated = await updateProfileByAdmin(profile.id, {
+        username: profile.username,
+        displayName: profile.displayName,
+        passwordNote: profile.passwordNote
+      });
+
+      setProfiles((prev) => prev.map((item) => item.id === updated.id ? updated : item));
+      setMessage(`บันทึกบัญชี ${updated.username} เรียบร้อยแล้ว`);
+    } catch (error) {
+      setMessage(`บันทึกบัญชีไม่สำเร็จ: ${error.message}`);
+    } finally {
+      setProfileBusy(false);
+    }
   }
 
   async function handleCleanup() {
@@ -199,11 +248,84 @@ export default function AdminPanel({ data, setData, user, refreshData }) {
         <div>
           <span className="eyebrow">Admin Panel</span>
           <h2>จัดการข้อมูลทั้งหมด</h2>
-          <p>ค้นหา แก้ไข ลบ และล้างข้อมูลทดลองจากหน้าเว็บ</p>
+          <p>บัญชีผู้ใช้ ค้นหา แก้ไข ลบ และล้างข้อมูลทดลองจากหน้าเว็บ</p>
         </div>
       </div>
 
       {message ? <div className={message.includes('ไม่สำเร็จ') || message.includes('กรุณา') ? 'alert danger' : 'alert success'}>{message}</div> : null}
+
+      <div className="table-card account-admin-card">
+        <div className="section-title">
+          <div>
+            <h3>จัดการบัญชีผู้ใช้</h3>
+            <p>Admin เห็นชื่อผู้ใช้และรหัสสำรองที่บันทึกไว้ เพื่อช่วยเหลือกรณีลืมรหัส</p>
+          </div>
+        </div>
+
+        <div className="responsive-table">
+          <table className="account-table">
+            <thead>
+              <tr>
+                <th>สิทธิ์</th>
+                <th>คณะสี</th>
+                <th>ชื่อผู้ใช้</th>
+                <th>ชื่อแสดงในระบบ</th>
+                <th>รหัสสำรองที่ Admin เห็น</th>
+                <th>บันทึก</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profiles.map((profile) => {
+                const team = getTeam(profile.colorTeamId);
+                return (
+                  <tr key={profile.id}>
+                    <td>{profile.role === 'ADMIN' ? 'Admin' : 'ประธานสี'}</td>
+                    <td>{team ? <TeamBadge teamId={team.id} size="small" /> : '-'}</td>
+                    <td>
+                      <input
+                        value={profile.username || ''}
+                        onChange={(event) => updateProfileField(profile.id, 'username', event.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        value={profile.displayName || ''}
+                        onChange={(event) => updateProfileField(profile.id, 'displayName', event.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        value={profile.passwordNote || ''}
+                        onChange={(event) => updateProfileField(profile.id, 'passwordNote', event.target.value)}
+                        placeholder="บันทึกรหัสสำรอง"
+                      />
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-small btn-primary"
+                        type="button"
+                        onClick={() => saveProfile(profile)}
+                        disabled={profileBusy}
+                      >
+                        บันทึก
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!profiles.length ? (
+                <tr>
+                  <td colSpan="6">ยังโหลดบัญชีผู้ใช้ไม่ได้ กรุณารัน SQL สิทธิ์บัญชีก่อน</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="alert info">
+          ระบบความปลอดภัยไม่สามารถอ่านรหัสผ่านเดิมย้อนหลังได้ ช่องรหัสสำรองจะแสดงเฉพาะรหัสที่ผู้ใช้หรือ Admin บันทึกไว้ในระบบเท่านั้น
+        </div>
+      </div>
 
       <div className="cleanup-card">
         <div className="section-title">
@@ -215,93 +337,37 @@ export default function AdminPanel({ data, setData, user, refreshData }) {
 
         <div className="cleanup-grid">
           <label className="check-card">
-            <input
-              type="checkbox"
-              checked={cleanupOptions.dutyRecords}
-              onChange={() => toggleCleanup('dutyRecords')}
-            />
-            <span>
-              <strong>ข้อมูลการมาทำเวร</strong>
-              <small>สถานะ จำนวนคน หมายเหตุ และลิงก์รูปในแต่ละห้อง</small>
-            </span>
+            <input type="checkbox" checked={cleanupOptions.dutyRecords} onChange={() => toggleCleanup('dutyRecords')} />
+            <span><strong>ข้อมูลการมาทำเวร</strong><small>สถานะ จำนวนคน หมายเหตุ และลิงก์รูปในแต่ละห้อง</small></span>
           </label>
-
           <label className="check-card">
-            <input
-              type="checkbox"
-              checked={cleanupOptions.cleanScores}
-              onChange={() => toggleCleanup('cleanScores')}
-            />
-            <span>
-              <strong>คะแนนความสะอาด</strong>
-              <small>คะแนนที่หัวหน้าคณะสีหรือ Admin ให้ไว้</small>
-            </span>
+            <input type="checkbox" checked={cleanupOptions.cleanScores} onChange={() => toggleCleanup('cleanScores')} />
+            <span><strong>คะแนนความสะอาด</strong><small>คะแนนที่หัวหน้าคณะสีหรือ Admin ให้ไว้</small></span>
           </label>
-
           <label className="check-card">
-            <input
-              type="checkbox"
-              checked={cleanupOptions.editLogs}
-              onChange={() => toggleCleanup('editLogs')}
-            />
-            <span>
-              <strong>ประวัติการแก้ไข</strong>
-              <small>Log การเพิ่ม แก้ไข และลบข้อมูล</small>
-            </span>
+            <input type="checkbox" checked={cleanupOptions.editLogs} onChange={() => toggleCleanup('editLogs')} />
+            <span><strong>ประวัติการแก้ไข</strong><small>Log การเพิ่ม แก้ไข และลบข้อมูล</small></span>
           </label>
-
           <label className="check-card">
-            <input
-              type="checkbox"
-              checked={cleanupOptions.storageFiles}
-              onChange={() => toggleCleanup('storageFiles')}
-            />
-            <span>
-              <strong>รูปภาพใน Storage</strong>
-              <small>ลบไฟล์รูปทั้งหมดใน bucket area-photos ด้วย Storage API</small>
-            </span>
+            <input type="checkbox" checked={cleanupOptions.storageFiles} onChange={() => toggleCleanup('storageFiles')} />
+            <span><strong>รูปภาพในระบบ</strong><small>ลบไฟล์รูปทั้งหมดด้วย API ของระบบ</small></span>
           </label>
-
           <label className="check-card warning">
-            <input
-              type="checkbox"
-              checked={cleanupOptions.dutyAreas}
-              onChange={() => toggleCleanup('dutyAreas')}
-            />
-            <span>
-              <strong>ตารางพื้นที่/ห้อง</strong>
-              <small>ไม่แนะนำ ถ้าลบแล้วต้อง Seed ตารางพื้นที่ใหม่</small>
-            </span>
+            <input type="checkbox" checked={cleanupOptions.dutyAreas} onChange={() => toggleCleanup('dutyAreas')} />
+            <span><strong>ตารางพื้นที่/ห้อง</strong><small>ไม่แนะนำ ถ้าลบแล้วต้อง Seed ตารางพื้นที่ใหม่</small></span>
           </label>
-
           <label className="check-card">
-            <input
-              type="checkbox"
-              checked={cleanupOptions.localCache}
-              onChange={() => toggleCleanup('localCache')}
-            />
-            <span>
-              <strong>Cache ใน Browser</strong>
-              <small>ล้างข้อมูลที่ค้างในเครื่องผู้ดูแลระบบเครื่องนี้</small>
-            </span>
+            <input type="checkbox" checked={cleanupOptions.localCache} onChange={() => toggleCleanup('localCache')} />
+            <span><strong>Cache ใน Browser</strong><small>ล้างข้อมูลที่ค้างในเครื่องผู้ดูแลระบบเครื่องนี้</small></span>
           </label>
         </div>
 
         <div className="cleanup-confirm">
           <label>
             พิมพ์คำว่า <strong>ลบข้อมูล</strong> เพื่อยืนยัน
-            <input
-              value={cleanupConfirm}
-              onChange={(event) => setCleanupConfirm(event.target.value)}
-              placeholder="ลบข้อมูล"
-            />
+            <input value={cleanupConfirm} onChange={(event) => setCleanupConfirm(event.target.value)} placeholder="ลบข้อมูล" />
           </label>
-          <button
-            className="btn btn-danger"
-            type="button"
-            onClick={handleCleanup}
-            disabled={cleanupBusy}
-          >
+          <button className="btn btn-danger" type="button" onClick={handleCleanup} disabled={cleanupBusy}>
             {cleanupBusy ? 'กำลังลบข้อมูล...' : 'ลบข้อมูลที่เลือก'}
           </button>
         </div>
@@ -362,9 +428,7 @@ export default function AdminPanel({ data, setData, user, refreshData }) {
                   </tr>
                 );
               })}
-              {!dutyRows.length ? (
-                <tr><td colSpan="7">ไม่พบข้อมูล</td></tr>
-              ) : null}
+              {!dutyRows.length ? <tr><td colSpan="7">ไม่พบข้อมูล</td></tr> : null}
             </tbody>
           </table>
         </div>

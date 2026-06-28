@@ -31,3 +31,13 @@
 - local browser cache
 
 หากลบรูปใน Storage ต้องมี RLS policy สำหรับ delete บน `storage.objects` ซึ่งอยู่ในไฟล์ `supabase/04_admin_cleanup_policies.sql`
+
+
+## Account management
+
+Run `supabase/05_account_management.sql` to add:
+- `profiles.password_note`
+- own profile update policy
+- admin profile read/update policy
+
+The web app cannot read historical authentication passwords. Admin sees only the backup password note saved by the user or admin.

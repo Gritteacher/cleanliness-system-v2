@@ -22,6 +22,13 @@ export default function AppHeader({ user, route, navigate, onLogout }) {
               <strong>{user.displayName}</strong>
               <span>{user.role === 'ADMIN' ? 'Admin' : team?.shortName}</span>
             </div>
+            <button
+              className={route === '/account' ? 'btn btn-primary' : 'btn btn-ghost'}
+              type="button"
+              onClick={() => navigate('/account')}
+            >
+              บัญชี
+            </button>
             <button className="btn btn-ghost" type="button" onClick={onLogout}>ออกจากระบบ</button>
           </>
         ) : (

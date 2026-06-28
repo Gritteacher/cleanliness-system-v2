@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase.js';
 const AUTH_KEY = 'cleanliness_v2_auth';
 const USERNAME_EMAIL_DOMAIN = 'tsn.local';
 
-function usernameToEmail(username) {
+export function usernameToEmail(username) {
   const clean = String(username || '').trim();
   if (clean.includes('@')) return clean;
   return `${clean}@${USERNAME_EMAIL_DOMAIN}`;
@@ -27,13 +27,14 @@ async function fetchProfile(userId) {
     username: data.username,
     displayName: data.display_name,
     role: data.role,
-    colorTeamId: data.color_team_id
+    colorTeamId: data.color_team_id,
+    passwordNote: data.password_note || ''
   };
 }
 
 export async function login(username, password) {
   if (!isSupabaseConfigured || !supabase) {
-    return { ok: false, message: 'ยังไม่ได้ตั้งค่า Supabase ในไฟล์ .env' };
+    return { ok: false, message: 'ยังไม่ได้ตั้งค่าการเชื่อมต่อระบบ' };
   }
 
   const email = usernameToEmail(username);
@@ -43,7 +44,7 @@ export async function login(username, password) {
   });
 
   if (error) {
-    return { ok: false, message: 'Username หรือ Password ไม่ถูกต้อง หรือยังไม่ได้สร้างผู้ใช้ใน Supabase Auth' };
+    return { ok: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือยังไม่ได้สร้างผู้ใช้ในระบบ' };
   }
 
   try {
@@ -52,7 +53,7 @@ export async function login(username, password) {
     return { ok: true, user: profile };
   } catch (profileError) {
     await supabase.auth.signOut();
-    return { ok: false, message: 'เข้าสู่ระบบได้ แต่ยังไม่พบข้อมูลสิทธิ์ในตาราง profiles' };
+    return { ok: false, message: 'เข้าสู่ระบบได้ แต่ยังไม่พบข้อมูลสิทธิ์ผู้ใช้' };
   }
 }
 

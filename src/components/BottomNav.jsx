@@ -78,6 +78,12 @@ function Icon({ name }) {
         <circle cx="16" cy="12" r="2" />
         <circle cx="10" cy="18" r="2" />
       </>
+    ),
+    account: (
+      <>
+        <circle cx="12" cy="8" r="3.5" />
+        <path d="M5 20c1.3-4 12.7-4 14 0" />
+      </>
     )
   };
 
@@ -94,6 +100,7 @@ export default function BottomNav({ user, route, navigate }) {
     { path: '/dashboard', label: 'หน้าหลัก', icon: 'home' },
     { path: '/duty-record', label: 'ทำเวร', icon: 'duty' },
     { path: '/clean-score', label: 'ให้คะแนน', icon: 'score' },
+    { path: '/account', label: 'บัญชี', icon: 'account' },
     { path: '/', label: 'Public', icon: 'scoreboard' }
   ];
 
@@ -104,6 +111,7 @@ export default function BottomNav({ user, route, navigate }) {
     { path: '/admin-details', label: 'พื้นที่', icon: 'detail' },
     { path: '/admin-completeness', label: 'ครบถ้วน', icon: 'complete' },
     { path: '/admin-panel', label: 'จัดการ', icon: 'admin' },
+    { path: '/account', label: 'บัญชี', icon: 'account' },
     { path: '/area-setup', label: 'Setup', icon: 'setup' }
   ];
 
