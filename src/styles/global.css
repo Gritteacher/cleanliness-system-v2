@@ -1778,3 +1778,49 @@ table {
   font-family: 'Prompt', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   font-weight: 400 !important;
 }
+
+
+/* ===== Admin submission report ===== */
+
+.report-table-wrap {
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.submission-report-table {
+  min-width: 1320px;
+}
+
+.submission-report-table th {
+  position: sticky;
+  top: 0;
+  background: #F8FAFC;
+  z-index: 1;
+}
+
+.submission-report-table td {
+  vertical-align: top;
+}
+
+.submission-report-table small,
+.status-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.activity-row {
+  background: #FFFBEB;
+}
+
+.report-photo-cell {
+  display: grid;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.admin-report-page .photo-frame.compact,
+.report-photo-cell .photo-frame.compact {
+  max-width: 92px;
+}

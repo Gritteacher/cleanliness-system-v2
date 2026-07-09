@@ -84,6 +84,14 @@ function Icon({ name }) {
         <circle cx="12" cy="8" r="3.5" />
         <path d="M5 20c1.3-4 12.7-4 14 0" />
       </>
+    ),
+    report: (
+      <>
+        <path d="M5 4h14v16H5z" />
+        <path d="M8 8h8" />
+        <path d="M8 12h8" />
+        <path d="M8 16h5" />
+      </>
     )
   };
 
@@ -106,6 +114,7 @@ export default function BottomNav({ user, route, navigate }) {
 
   const adminItems = [
     { path: '/admin-summary', label: 'สรุป', icon: 'scoreboard' },
+    { path: '/admin-report', label: 'รายงาน', icon: 'report' },
     { path: '/duty-record', label: 'ทำเวร', icon: 'duty' },
     { path: '/clean-score', label: 'ให้คะแนน', icon: 'score' },
     { path: '/admin-details', label: 'พื้นที่', icon: 'detail' },

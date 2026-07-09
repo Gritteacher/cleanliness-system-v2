@@ -7,6 +7,7 @@ import PresidentDashboard from './pages/PresidentDashboard.jsx';
 import DutyRecord from './pages/DutyRecord.jsx';
 import CleanScore from './pages/CleanScore.jsx';
 import AdminSummary from './pages/AdminSummary.jsx';
+import AdminSubmissionReport from './pages/AdminSubmissionReport.jsx';
 import AdminAreaDetails from './pages/AdminAreaDetails.jsx';
 import AdminCompleteness from './pages/AdminCompleteness.jsx';
 import AdminPanel from './pages/AdminPanel.jsx';
@@ -141,6 +142,9 @@ export default function App() {
       break;
     case '/admin-summary':
       page = requireAuth(<AdminSummary {...pageProps} />, true);
+      break;
+    case '/admin-report':
+      page = requireAuth(<AdminSubmissionReport {...pageProps} />, true);
       break;
     case '/admin-details':
       page = requireAuth(<AdminAreaDetails {...pageProps} />, true);

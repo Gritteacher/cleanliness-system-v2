@@ -121,8 +121,10 @@ export function calculateTeamSummary(data, recordDate, teamId) {
   return {
     team: getTeam(teamId),
     teamId,
-    totalRooms: areas.length,
+    rawTotalRooms: areas.length,
+    totalRooms: eligibleRooms.length,
     eligibleRooms: eligibleRooms.length,
+    activityRooms: roomSummaries.filter((item) => item.isActivity).length,
     completeRooms: completeCount,
     waitingRooms: eligibleRooms.filter((item) => item.statusText === 'รอคะแนน').length,
     missingRecords: eligibleRooms.filter((item) => !item.record).length,
