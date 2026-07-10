@@ -83,13 +83,16 @@ export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}) 
     });
 
     await page.goto(targetUrl.toString(), {
-      waitUntil: 'networkidle',
+      waitUntil: 'domcontentloaded',
       timeout: 90000
     });
 
     await page.waitForSelector('.public-page', {
       timeout: 60000
     });
+
+    // รอให้ข้อมูลและรูปภาพที่โหลดแบบ async แสดงผลก่อนสร้าง PDF
+    await page.waitForTimeout(3500);
 
     await page.addStyleTag({
       content: `

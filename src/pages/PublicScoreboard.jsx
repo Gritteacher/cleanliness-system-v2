@@ -62,11 +62,29 @@ export default function PublicScoreboard({ data, navigate }) {
 
       if (!response.ok) {
         let message = 'สร้าง PDF ไม่สำเร็จ';
+        const contentType = response.headers.get('content-type') || '';
+
         try {
-          const errorData = await response.json();
-          message = errorData.message || message;
+          if (contentType.includes('application/json')) {
+            const errorData = await response.json();
+            message = errorData.message || message;
+          } else {
+            const rawText = await response.text();
+            const cleanText = rawText
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+
+            if (response.status === 404) {
+              message = 'ยังไม่พบ Function สร้าง PDF ใน Netlify กรุณา deploy ไฟล์ชุดล่าสุด และกด Clear cache and deploy site';
+            } else if (response.status === 502 || response.status === 503 || response.status === 504) {
+              message = 'Function สร้าง PDF ทำงานไม่สำเร็จ กรุณาดู Function logs ใน Netlify';
+            } else if (cleanText) {
+              message = cleanText.slice(0, 220);
+            }
+          }
         } catch {
-          // skip
+          message = 'สร้าง PDF ไม่สำเร็จ กรุณาตรวจสอบ Function logs ใน Netlify';
         }
 
         throw new Error(message);

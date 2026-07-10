@@ -124,3 +124,9 @@ supabase/
 
 - แก้ `browserType.launch: headless: expected boolean, got string`
 - บังคับค่า `headless: true` ใน Netlify Function สำหรับสร้าง PDF
+
+
+## อัปเดตแก้ข้อความ error PDF
+
+- ปรับให้ปุ่มสร้าง PDF แสดงสาเหตุ error จาก Netlify Function ชัดเจนขึ้น
+- ปรับการรอโหลดหน้า PDF เพื่อลดโอกาส timeout จากการรอ network idle
