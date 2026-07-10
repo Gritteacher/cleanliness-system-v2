@@ -1870,3 +1870,57 @@ table {
 .president-score-item small {
   color: var(--muted);
 }
+
+
+/* ===== Public score reasons ===== */
+
+.public-reason-box {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #F8FAFC;
+  padding: 12px;
+}
+
+.public-reason-box > strong {
+  display: block;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+
+.public-reason-box p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.public-reason-list {
+  display: grid;
+  gap: 8px;
+}
+
+.public-reason-item {
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 9px;
+}
+
+.public-reason-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.public-reason-head b {
+  color: var(--navy);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.public-reason-item p {
+  color: var(--text);
+  font-size: 13px;
+}

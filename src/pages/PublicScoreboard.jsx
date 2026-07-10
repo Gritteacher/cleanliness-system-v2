@@ -77,7 +77,7 @@ export default function PublicScoreboard({ data, navigate }) {
       <div className="section-title">
         <div>
           <h3>รายละเอียดรายห้อง: {selectedSummary.team.name}</h3>
-          <p>บุคคลทั่วไปดูได้เฉพาะข้อมูลสรุปและรูปภาพ ไม่แสดงจำนวนคนและรายละเอียดคะแนนประธาน</p>
+          <p>บุคคลทั่วไปดูข้อมูลสรุป รูปภาพ คะแนนสะอาด และเหตุผลการให้คะแนนได้</p>
         </div>
       </div>
 
@@ -97,8 +97,29 @@ export default function PublicScoreboard({ data, navigate }) {
             <div className="detail-list">
               <div><span>คณะสี</span><TeamBadge teamId={room.teamId} size="small" /></div>
               <div><span>สถานะ</span><b>{room.statusText}</b></div>
-              <div><span>คะแนนจำนวนคน</span><b>{room.studentScore.toFixed(2)} /10</b></div>
-              <div><span>คะแนนสะอาด</span><b>{room.cleanAverage.toFixed(2)} /10</b></div>
+              <div><span>คะแนนจำนวนคน</span><b>{room.isActivity ? 'ยกเว้น' : `${room.studentScore.toFixed(2)} /10`}</b></div>
+              <div><span>คะแนนสะอาด</span><b>{room.isActivity ? 'ยกเว้น' : `${room.cleanAverage.toFixed(2)} /10`}</b></div>
+            </div>
+
+            <div className="public-reason-box">
+              <strong>เหตุผลการให้คะแนน</strong>
+              {room.isActivity ? (
+                <p>ห้องนี้ไปกิจกรรม จึงไม่นำมาคำนวณคะแนนและไม่ต้องให้เหตุผลการประเมิน</p>
+              ) : room.scores.length ? (
+                <div className="public-reason-list">
+                  {room.scores.map((score) => (
+                    <div key={score.id} className="public-reason-item">
+                      <div className="public-reason-head">
+                        <TeamBadge teamId={score.evaluatorColorId} size="small" />
+                        <b>{Number(score.cleanScore || 0).toFixed(2)} /10</b>
+                      </div>
+                      <p>{score.scoreNote || 'ไม่ได้ระบุเหตุผล'}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>ยังไม่มีการให้คะแนน จึงยังไม่มีเหตุผลการประเมิน</p>
+              )}
             </div>
           </MobileCard>
         ))}
