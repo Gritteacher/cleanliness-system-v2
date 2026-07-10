@@ -1924,3 +1924,12 @@ table {
   color: var(--text);
   font-size: 13px;
 }
+
+
+.public-reason-list.reasons-only .public-reason-item {
+  padding: 10px 12px;
+}
+
+.public-reason-list.reasons-only .public-reason-item p {
+  margin: 0;
+}

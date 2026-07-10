@@ -77,7 +77,7 @@ export default function PublicScoreboard({ data, navigate }) {
       <div className="section-title">
         <div>
           <h3>รายละเอียดรายห้อง: {selectedSummary.team.name}</h3>
-          <p>บุคคลทั่วไปดูข้อมูลสรุป รูปภาพ คะแนนสะอาด และเหตุผลการให้คะแนนได้</p>
+          <p>บุคคลทั่วไปดูข้อมูลสรุป รูปภาพ คะแนนสะอาด และเหตุผลการให้คะแนนได้ โดยไม่แสดงว่าใครให้คะแนนเท่าไหร่</p>
         </div>
       </div>
 
@@ -105,18 +105,18 @@ export default function PublicScoreboard({ data, navigate }) {
               <strong>เหตุผลการให้คะแนน</strong>
               {room.isActivity ? (
                 <p>ห้องนี้ไปกิจกรรม จึงไม่นำมาคำนวณคะแนนและไม่ต้องให้เหตุผลการประเมิน</p>
-              ) : room.scores.length ? (
-                <div className="public-reason-list">
-                  {room.scores.map((score) => (
-                    <div key={score.id} className="public-reason-item">
-                      <div className="public-reason-head">
-                        <TeamBadge teamId={score.evaluatorColorId} size="small" />
-                        <b>{Number(score.cleanScore || 0).toFixed(2)} /10</b>
+              ) : room.scores.some((score) => score.scoreNote?.trim()) ? (
+                <div className="public-reason-list reasons-only">
+                  {room.scores
+                    .filter((score) => score.scoreNote?.trim())
+                    .map((score) => (
+                      <div key={score.id} className="public-reason-item">
+                        <p>{score.scoreNote}</p>
                       </div>
-                      <p>{score.scoreNote || 'ไม่ได้ระบุเหตุผล'}</p>
-                    </div>
-                  ))}
+                    ))}
                 </div>
+              ) : room.scores.length ? (
+                <p>มีการให้คะแนนแล้ว แต่ไม่ได้ระบุเหตุผล</p>
               ) : (
                 <p>ยังไม่มีการให้คะแนน จึงยังไม่มีเหตุผลการประเมิน</p>
               )}
