@@ -144,6 +144,18 @@ function buildReportRows(data, allDates, teamFilter, statusFilter, forceEveryTea
           ? 'ยกเว้นการประเมิน'
           : summary.complete ? 'สมบูรณ์' : summary.statusText;
 
+        const scoreDetails = colorTeams.map((evaluatorTeam) => {
+          const score = summary.scores.find((item) => item.evaluatorColorId === evaluatorTeam.id);
+          return {
+            evaluatorTeam,
+            hasScore: Boolean(score),
+            cleanScore: score ? Number(score.cleanScore || 0) : null,
+            scoreNote: score?.scoreNote || '',
+            submittedName: score?.submittedName || '',
+            submittedAt: score?.submittedAt || ''
+          };
+        });
+
         const row = {
           id: `${date}-${team.id}-${area.id}`,
           date,
@@ -157,6 +169,7 @@ function buildReportRows(data, allDates, teamFilter, statusFilter, forceEveryTea
           photoStatus,
           scoreStatus,
           scoreCount: summary.scoreCount,
+          scoreDetails,
           cleanAverageText,
           studentScoreText,
           countedText,
@@ -393,7 +406,7 @@ export default function AdminSubmissionReport({ data }) {
           <div>
             <h3>รายละเอียดการกรอกข้อมูล</h3>
             <p>
-              ห้องที่เลือกสถานะไปกิจกรรมจะแสดงว่า “ไม่นำมาคำนวณทุกคะแนน” และจะไม่ถูกนับในจำนวนห้อง คะแนนจำนวนคน คะแนนจำนวนห้อง หรือคะแนนความสะอาด
+              ห้องที่เลือกสถานะไปกิจกรรมจะแสดงว่า “ไม่นำมาคำนวณทุกคะแนน” และจะไม่ถูกนับในจำนวนห้อง คะแนนจำนวนคน คะแนนจำนวนห้อง หรือคะแนนความสะอาด พร้อมแสดงคะแนนรายประธานและเหตุผลการให้คะแนน
             </p>
           </div>
         </div>
@@ -410,8 +423,9 @@ export default function AdminSubmissionReport({ data }) {
                 <th>จำนวนคน</th>
                 <th>คะแนนคน</th>
                 <th>รูป</th>
-                <th>คะแนนสะอาด</th>
+                <th>คะแนนเฉลี่ย</th>
                 <th>ผู้ให้คะแนน</th>
+                <th>คะแนนรายประธาน / เหตุผล</th>
                 <th>การคำนวณ</th>
                 <th>ผู้กรอก</th>
                 <th>หมายเหตุ</th>
@@ -440,6 +454,30 @@ export default function AdminSubmissionReport({ data }) {
                   </td>
                   <td>{row.cleanAverageText}</td>
                   <td>{row.scoreStatus}</td>
+                  <td>
+                    {row.isActivity ? (
+                      <span className="muted-text">ยกเว้น ไม่ต้องให้คะแนน</span>
+                    ) : (
+                      <div className="president-score-list">
+                        {row.scoreDetails.map((detail) => (
+                          <div key={detail.evaluatorTeam.id} className={detail.hasScore ? 'president-score-item' : 'president-score-item missing'}>
+                            <div className="president-score-head">
+                              <TeamBadge teamId={detail.evaluatorTeam.id} size="small" />
+                              <strong>{detail.hasScore ? `${detail.cleanScore.toFixed(2)} /10` : 'ยังไม่ให้คะแนน'}</strong>
+                            </div>
+                            {detail.hasScore ? (
+                              <>
+                                <span>เหตุผล: {detail.scoreNote || 'ไม่ได้ระบุเหตุผล'}</span>
+                                {detail.submittedName ? <small>โดย {detail.submittedName}</small> : null}
+                              </>
+                            ) : (
+                              <span>รอประธานคณะสีนี้ให้คะแนน</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </td>
                   <td>{row.countedText}</td>
                   <td>
                     <span>{row.submittedName}</span>
@@ -450,7 +488,7 @@ export default function AdminSubmissionReport({ data }) {
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan="13">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td>
+                  <td colSpan="14">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td>
                 </tr>
               ) : null}
             </tbody>

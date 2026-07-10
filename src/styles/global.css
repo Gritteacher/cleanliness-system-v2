@@ -1824,3 +1824,49 @@ table {
 .report-photo-cell .photo-frame.compact {
   max-width: 92px;
 }
+
+
+/* ===== President score details in admin report ===== */
+
+.president-score-list {
+  display: grid;
+  gap: 8px;
+  min-width: 270px;
+}
+
+.president-score-item {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px;
+  background: #FFFFFF;
+}
+
+.president-score-item.missing {
+  background: #F8FAFC;
+  color: var(--muted);
+}
+
+.president-score-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.president-score-head strong {
+  white-space: nowrap;
+  color: var(--navy);
+  font-size: 12px;
+}
+
+.president-score-item span {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.president-score-item small {
+  color: var(--muted);
+}
