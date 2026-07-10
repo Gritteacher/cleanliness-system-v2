@@ -70,7 +70,9 @@ export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}) 
     browser = await playwrightChromium.launch({
       args: chromium.args,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless
+      // Playwright expects headless to be boolean.
+      // @sparticuz/chromium may expose a string value, so force true.
+      headless: true
     });
 
     const page = await browser.newPage({

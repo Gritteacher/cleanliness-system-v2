@@ -118,3 +118,9 @@ supabase/
 - ก่อนสร้าง PDF ต้องกรอกชื่อผู้ใช้และรหัสผ่านของระบบ
 - เพิ่ม Netlify Scheduled Function สำหรับส่ง PDF หน้าสาธารณะทางอีเมลทุกวันเวลา 09:00 น. ตามเวลาประเทศไทย
 - ตั้งค่าเพิ่มเติมตามไฟล์ `NETLIFY_PDF_EMAIL_SETUP.md`
+
+
+## อัปเดตแก้ PDF Function
+
+- แก้ `browserType.launch: headless: expected boolean, got string`
+- บังคับค่า `headless: true` ใน Netlify Function สำหรับสร้าง PDF
