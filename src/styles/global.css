@@ -1933,3 +1933,54 @@ table {
 .public-reason-list.reasons-only .public-reason-item p {
   margin: 0;
 }
+
+
+/* ===== Public PDF export ===== */
+
+.public-pdf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pdf-login-modal .muted-text {
+  margin-top: -6px;
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+.public-team-detail-block {
+  margin-top: 18px;
+}
+
+@media print {
+  .print-hide,
+  .side-nav,
+  .app-footer,
+  .header-actions,
+  .public-pdf-actions,
+  .modal-backdrop {
+    display: none !important;
+  }
+
+  .app {
+    padding-bottom: 0 !important;
+  }
+
+  .app-header {
+    position: static !important;
+  }
+
+  .page-shell {
+    width: 100% !important;
+    margin: 0 auto !important;
+  }
+
+  .mobile-card,
+  .team-score-card,
+  .stat-card,
+  .hero-card,
+  .public-reason-box {
+    break-inside: avoid;
+  }
+}
