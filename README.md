@@ -130,3 +130,19 @@ supabase/
 
 - ปรับให้ปุ่มสร้าง PDF แสดงสาเหตุ error จาก Netlify Function ชัดเจนขึ้น
 - ปรับการรอโหลดหน้า PDF เพื่อลดโอกาส timeout จากการรอ network idle
+
+
+## แก้ timeout PDF 30 วินาที
+
+- ปุ่มสร้าง PDF แบบกดเองเปลี่ยนเป็นการยืนยันตัวตน แล้วเปิดหน้า Print/Save as PDF ใน browser
+- เพิ่ม `validate-pdf-login` สำหรับตรวจ user/password แบบเร็ว
+- ส่งอีเมลรายวันเปลี่ยนให้ Scheduled Function เรียก Background Function เพื่อหลีกเลี่ยง timeout 30 วินาที
+
+
+## Apple-inspired visual redesign
+
+- ปรับเฉพาะงานออกแบบและ CSS โดยไม่เปลี่ยน route, role, form, calculation, database หรือ Netlify Functions
+- ใช้ Action Blue `#0066cc` สำหรับปุ่มและสถานะการโต้ตอบ
+- ใช้พื้นผิวขาว/เทาอ่อน/ดำ เส้นขอบบาง ปุ่มทรง pill และลดเงาตกแต่ง
+- คง Font Prompt Regular ตามข้อกำหนดเดิมของระบบ
+- คงสีคณะสีไว้เฉพาะจุดที่ใช้ระบุตัวตนของคณะสี

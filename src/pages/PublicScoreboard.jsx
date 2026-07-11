@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { colorTeams } from '../data/colorTeams.js';
 import TeamBadge from '../components/TeamBadge.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -36,6 +36,19 @@ export default function PublicScoreboard({ data, navigate }) {
     [data, selectedDate, selectedTeamId]
   );
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('pdf') === '1' && params.get('autoprint') === '1') {
+      const timer = window.setTimeout(() => {
+        window.print();
+      }, 1200);
+
+      return () => window.clearTimeout(timer);
+    }
+
+    return undefined;
+  }, []);
+
   const detailSummaries = isPdfMode ? summaries : [selectedSummary];
 
   function updatePdfField(name, value) {
@@ -48,7 +61,7 @@ export default function PublicScoreboard({ data, navigate }) {
     setPdfMessage('');
 
     try {
-      const response = await fetch('/.netlify/functions/create-public-pdf', {
+      const response = await fetch('/.netlify/functions/validate-pdf-login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -61,46 +74,25 @@ export default function PublicScoreboard({ data, navigate }) {
       });
 
       if (!response.ok) {
-        let message = 'สร้าง PDF ไม่สำเร็จ';
-        const contentType = response.headers.get('content-type') || '';
-
+        let message = 'ยืนยันตัวตนไม่สำเร็จ';
         try {
-          if (contentType.includes('application/json')) {
-            const errorData = await response.json();
-            message = errorData.message || message;
-          } else {
-            const rawText = await response.text();
-            const cleanText = rawText
-              .replace(/<[^>]+>/g, ' ')
-              .replace(/\s+/g, ' ')
-              .trim();
-
-            if (response.status === 404) {
-              message = 'ยังไม่พบ Function สร้าง PDF ใน Netlify กรุณา deploy ไฟล์ชุดล่าสุด และกด Clear cache and deploy site';
-            } else if (response.status === 502 || response.status === 503 || response.status === 504) {
-              message = 'Function สร้าง PDF ทำงานไม่สำเร็จ กรุณาดู Function logs ใน Netlify';
-            } else if (cleanText) {
-              message = cleanText.slice(0, 220);
-            }
-          }
+          const errorData = await response.json();
+          message = errorData.message || message;
         } catch {
-          message = 'สร้าง PDF ไม่สำเร็จ กรุณาตรวจสอบ Function logs ใน Netlify';
+          // skip
         }
 
         throw new Error(message);
       }
 
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `public-score-${selectedDate}.pdf`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
+      const result = await response.json();
+      if (!result.printUrl) {
+        throw new Error('ไม่พบลิงก์สำหรับพิมพ์ PDF');
+      }
 
-      setPdfMessage('สร้าง PDF เรียบร้อยแล้ว');
+      window.open(result.printUrl, '_blank', 'noopener,noreferrer');
+
+      setPdfMessage('เปิดหน้าสำหรับพิมพ์ PDF แล้ว กรุณาเลือก Save as PDF ในหน้าต่างพิมพ์');
       setShowPdfLogin(false);
       setPdfForm({ username: '', password: '' });
     } catch (error) {
@@ -267,7 +259,7 @@ export default function PublicScoreboard({ data, navigate }) {
 
             <div className="action-row">
               <button className="btn btn-primary" type="submit" disabled={pdfBusy}>
-                {pdfBusy ? 'กำลังสร้าง PDF...' : 'สร้าง PDF'}
+                {pdfBusy ? 'กำลังตรวจสอบ...' : 'สร้าง PDF'}
               </button>
               <button className="btn btn-ghost" type="button" onClick={() => {
                 setShowPdfLogin(false);
