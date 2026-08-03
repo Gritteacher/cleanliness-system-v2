@@ -47,8 +47,12 @@ export default function AdminAreaDetails({ data }) {
               <div><span>สถานะ</span><b>{room.statusText}</b></div>
               <div><span>จำนวนคน</span><b>{room.record?.studentCount ?? '-'} คน</b></div>
               <div><span>คะแนนคน</span><b>{room.studentScore.toFixed(2)} /10</b></div>
-              <div><span>คะแนนสะอาดเฉลี่ย</span><b>{room.cleanAverage.toFixed(2)} /10</b></div>
-              <div><span>คะแนนประธาน</span><b>{room.scoreCount}/5 สี</b></div>
+              <div><span>คะแนนสะอาดเฉลี่ย</span><b>{room.isActivity ? 'ยกเว้น' : `${room.cleanAverage.toFixed(2)} /10`}</b></div>
+              <div><span>คะแนนประธาน</span><b>{room.isActivity ? 'ยกเว้น' : `${room.scoreCount}/5 สี`}</b></div>
+              <div>
+                <span>ความครบถ้วนของห้อง</span>
+                <b>{room.isActivity ? 'ยกเว้นการประเมิน' : room.complete ? 'สมบูรณ์' : room.missingReasons.join(' • ')}</b>
+              </div>
             </div>
           </MobileCard>
         ))}

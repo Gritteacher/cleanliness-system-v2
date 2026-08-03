@@ -15,6 +15,8 @@ export const STATUS_BADGE = {
   COMPLETE: 'success'
 };
 
+const VALID_EVALUATOR_IDS = new Set(colorTeams.map((team) => team.id));
+
 export function calculateStudentScore(studentCount) {
   const count = Number(studentCount || 0);
   return round2(Math.min((count / 15) * 10, 10));
@@ -33,47 +35,101 @@ export function getAreasForTeam(data, teamId) {
 }
 
 export function getDutyRecord(data, recordDate, areaId, dutyColorId) {
-  return data.dutyRecords.find((record) =>
+  return (data?.dutyRecords || []).find((record) =>
     record.recordDate === recordDate &&
     record.areaId === areaId &&
     record.dutyColorId === dutyColorId
   );
 }
 
+function getScoreTimestamp(score) {
+  const value = score?.updatedAt || score?.submittedAt || '';
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+/**
+ * คืนคะแนนล่าสุดเพียง 1 รายการต่อประธานคณะสี
+ * ป้องกันข้อมูลเก่าหรือรายการซ้ำทำให้ระบบนับ 5 สีคลาดเคลื่อน
+ */
 export function getScores(data, recordDate, areaId, dutyColorId) {
-  return data.cleanScores.filter((score) =>
-    score.recordDate === recordDate &&
-    score.areaId === areaId &&
-    score.dutyColorId === dutyColorId
-  );
+  const matches = (data?.cleanScores || [])
+    .filter((score) =>
+      score.recordDate === recordDate &&
+      score.areaId === areaId &&
+      score.dutyColorId === dutyColorId &&
+      VALID_EVALUATOR_IDS.has(score.evaluatorColorId)
+    )
+    .sort((a, b) => getScoreTimestamp(b) - getScoreTimestamp(a));
+
+  const latestByEvaluator = new Map();
+
+  matches.forEach((score) => {
+    if (!latestByEvaluator.has(score.evaluatorColorId)) {
+      latestByEvaluator.set(score.evaluatorColorId, score);
+    }
+  });
+
+  return colorTeams
+    .map((team) => latestByEvaluator.get(team.id))
+    .filter(Boolean);
 }
 
 export function getScoreByEvaluator(data, recordDate, areaId, dutyColorId, evaluatorColorId) {
-  return data.cleanScores.find((score) =>
-    score.recordDate === recordDate &&
-    score.areaId === areaId &&
-    score.dutyColorId === dutyColorId &&
-    score.evaluatorColorId === evaluatorColorId
-  );
+  return getScores(data, recordDate, areaId, dutyColorId)
+    .find((score) => score.evaluatorColorId === evaluatorColorId);
+}
+
+export function getRoomMissingReasons(record, scoreCount) {
+  if (!record) {
+    return ['ยังไม่มีข้อมูลการมาทำเวร'];
+  }
+
+  if (record.status === 'ACTIVITY') {
+    return [];
+  }
+
+  if (record.status === 'ABSENT') {
+    return ['สถานะไม่มาทำเวร'];
+  }
+
+  if (record.status !== 'PRESENT') {
+    return ['สถานะยังไม่พร้อมนำมาประเมิน'];
+  }
+
+  const reasons = [];
+
+  if (
+    record.studentCount === '' ||
+    record.studentCount === null ||
+    record.studentCount === undefined
+  ) {
+    reasons.push('ยังไม่ได้กรอกจำนวนคน');
+  }
+
+  if (!record.photo) {
+    reasons.push('ยังไม่มีรูปภาพ');
+  }
+
+  if (scoreCount < colorTeams.length) {
+    reasons.push(`คะแนนประธานยังไม่ครบ ${scoreCount}/${colorTeams.length} สี`);
+  }
+
+  return reasons;
 }
 
 export function calculateAreaStatus(record, scoreCount) {
   if (!record) return 'ยังไม่มีข้อมูลการมาทำเวร';
   if (record.status === 'ACTIVITY') return 'ไปกิจกรรม / ไม่นำมาคำนวณ';
   if (record.status === 'ABSENT') return 'ไม่มาทำเวร';
-  if (!record.photo) return 'ยังไม่มีรูป';
-  if (scoreCount < 5) return 'รอคะแนน';
-  return 'สมบูรณ์';
+
+  const reasons = getRoomMissingReasons(record, scoreCount);
+  return reasons.length ? reasons.join(' • ') : 'สมบูรณ์';
 }
 
 export function isCompleteRoom(record, scoreCount) {
-  if (!record) return false;
-  if (record.status !== 'PRESENT') return false;
-  return Boolean(record.photo) &&
-    record.studentCount !== '' &&
-    record.studentCount !== null &&
-    record.studentCount !== undefined &&
-    scoreCount >= 5;
+  if (!record || record.status !== 'PRESENT') return false;
+  return getRoomMissingReasons(record, scoreCount).length === 0;
 }
 
 export function calculateRoomSummary(data, recordDate, area, teamId) {
@@ -84,7 +140,10 @@ export function calculateRoomSummary(data, recordDate, area, teamId) {
   const scoreCount = scores.length;
   const submittedTotal = scores.reduce((sum, item) => sum + Number(item.cleanScore || 0), 0);
   const cleanAverage = scoreCount > 0 ? submittedTotal / scoreCount : 0;
-  const allFiveAverage = scoreCount >= 5 ? submittedTotal / 5 : cleanAverage;
+  const allFiveAverage = scoreCount >= colorTeams.length
+    ? submittedTotal / colorTeams.length
+    : cleanAverage;
+  const missingReasons = getRoomMissingReasons(record, scoreCount);
 
   return {
     area,
@@ -99,6 +158,7 @@ export function calculateRoomSummary(data, recordDate, area, teamId) {
     studentScore: round2(record?.studentScore || 0),
     isActivity: record?.status === 'ACTIVITY',
     complete: isCompleteRoom(record, scoreCount),
+    missingReasons,
     statusText: calculateAreaStatus(record, scoreCount)
   };
 }
@@ -126,9 +186,9 @@ export function calculateTeamSummary(data, recordDate, teamId) {
     eligibleRooms: eligibleRooms.length,
     activityRooms: roomSummaries.filter((item) => item.isActivity).length,
     completeRooms: completeCount,
-    waitingRooms: eligibleRooms.filter((item) => item.statusText === 'รอคะแนน').length,
+    waitingRooms: eligibleRooms.filter((item) => item.scoreCount < colorTeams.length).length,
     missingRecords: eligibleRooms.filter((item) => !item.record).length,
-    fullScoreRooms: eligibleRooms.filter((item) => item.scoreCount >= 5).length,
+    fullScoreRooms: eligibleRooms.filter((item) => item.scoreCount >= colorTeams.length).length,
     roomScore,
     cleanScore,
     studentScore,
@@ -151,8 +211,8 @@ export function getOverallStats(data, recordDate) {
     bestTeam: summaries[0],
     highestScore: summaries[0]?.totalScore || 0,
     completeRooms: rooms.filter((room) => room.complete).length,
-    waitingRooms: rooms.filter((room) => room.statusText === 'รอคะแนน').length,
-    missingRecords: rooms.filter((room) => !room.record).length,
-    fullScoreRooms: rooms.filter((room) => room.scoreCount >= 5).length
+    waitingRooms: rooms.filter((room) => !room.isActivity && room.scoreCount < colorTeams.length).length,
+    missingRecords: rooms.filter((room) => !room.isActivity && !room.record).length,
+    fullScoreRooms: rooms.filter((room) => !room.isActivity && room.scoreCount >= colorTeams.length).length
   };
 }

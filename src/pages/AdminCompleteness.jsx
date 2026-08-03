@@ -2,17 +2,50 @@ import { useMemo, useState } from 'react';
 import { colorTeams } from '../data/colorTeams.js';
 import TeamBadge from '../components/TeamBadge.jsx';
 import ProgressBar from '../components/ProgressBar.jsx';
-import { todayISO } from '../utils/dateUtils.js';
-import { calculateTeamSummary, getAreasForTeam } from '../utils/scoring.js';
+import { todayISO, getDutyTeamForDate, formatThaiDate } from '../utils/dateUtils.js';
+import {
+  getAreasForTeam,
+  getDutyRecord,
+  getScoreByEvaluator
+} from '../utils/scoring.js';
+
+function getActiveDutyTeams(data, selectedDate) {
+  const scheduledTeam = getDutyTeamForDate(selectedDate);
+  const teamIds = new Set();
+
+  if (scheduledTeam) {
+    teamIds.add(scheduledTeam.id);
+  }
+
+  (data.dutyRecords || []).forEach((record) => {
+    if (record.recordDate === selectedDate) {
+      teamIds.add(record.dutyColorId);
+    }
+  });
+
+  (data.cleanScores || []).forEach((score) => {
+    if (score.recordDate === selectedDate) {
+      teamIds.add(score.dutyColorId);
+    }
+  });
+
+  return colorTeams.filter((team) => teamIds.has(team.id));
+}
 
 export default function AdminCompleteness({ data }) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
 
-  const dutyCompleteness = useMemo(() => colorTeams.map((team) => {
+  const activeDutyTeams = useMemo(
+    () => getActiveDutyTeams(data, selectedDate),
+    [data, selectedDate]
+  );
+
+  const dutyCompleteness = useMemo(() => activeDutyTeams.map((team) => {
     const areas = getAreasForTeam(data, team.id);
-    const submitted = data.dutyRecords.filter((record) =>
-      record.recordDate === selectedDate && record.dutyColorId === team.id
+    const submitted = areas.filter((area) =>
+      Boolean(getDutyRecord(data, selectedDate, area.id, team.id))
     ).length;
+
     return {
       team,
       total: areas.length,
@@ -20,23 +53,44 @@ export default function AdminCompleteness({ data }) {
       missing: Math.max(areas.length - submitted, 0),
       percent: areas.length ? (submitted / areas.length) * 100 : 0
     };
-  }), [data, selectedDate]);
+  }), [data, selectedDate, activeDutyTeams]);
 
-  const scoreCompleteness = useMemo(() => colorTeams.map((team) => {
-    const totalNeed = data.areas.reduce((sum, area) => {
-      return sum + colorTeams.filter((owner) => area.roomsByTeam?.[owner.id]).length;
-    }, 0);
-    const submitted = data.cleanScores.filter((score) =>
-      score.recordDate === selectedDate && score.evaluatorColorId === team.id
-    ).length;
+  const scoreCompleteness = useMemo(() => colorTeams.map((evaluatorTeam) => {
+    const expectedRooms = activeDutyTeams.flatMap((ownerTeam) => (
+      getAreasForTeam(data, ownerTeam.id)
+        .filter((area) => {
+          const record = getDutyRecord(data, selectedDate, area.id, ownerTeam.id);
+          return record?.status !== 'ACTIVITY';
+        })
+        .map((area) => ({
+          area,
+          ownerTeam
+        }))
+    ));
+
+    const submitted = expectedRooms.filter(({ area, ownerTeam }) => (
+      Boolean(getScoreByEvaluator(
+        data,
+        selectedDate,
+        area.id,
+        ownerTeam.id,
+        evaluatorTeam.id
+      ))
+    )).length;
+
     return {
-      team,
-      total: totalNeed,
+      team: evaluatorTeam,
+      total: expectedRooms.length,
       submitted,
-      missing: Math.max(totalNeed - submitted, 0),
-      percent: totalNeed ? (submitted / totalNeed) * 100 : 0
+      missing: Math.max(expectedRooms.length - submitted, 0),
+      percent: expectedRooms.length ? (submitted / expectedRooms.length) * 100 : 0
     };
-  }), [data, selectedDate]);
+  }), [data, selectedDate, activeDutyTeams]);
+
+  const scheduledTeam = getDutyTeamForDate(selectedDate);
+  const activeLabel = activeDutyTeams.length
+    ? activeDutyTeams.map((team) => team.shortName).join(', ')
+    : 'ไม่มีคณะสีเวรหรือข้อมูลในวันที่เลือก';
 
   return (
     <section className="page-shell">
@@ -44,7 +98,11 @@ export default function AdminCompleteness({ data }) {
         <div>
           <span className="eyebrow">Completeness</span>
           <h2>ตรวจสอบความครบถ้วน</h2>
-          <p>ข้อมูลการมาทำเวรและการให้คะแนนของประธาน 5 สี</p>
+          <p>{formatThaiDate(selectedDate)}</p>
+          <div className="alert info compact-alert">
+            คณะสีเวรที่นำมาตรวจ: {activeLabel}
+            {scheduledTeam ? ` • เวรตามตาราง: ${scheduledTeam.shortName}` : ''}
+          </div>
         </div>
         <div className="hero-actions">
           <label>
@@ -54,8 +112,28 @@ export default function AdminCompleteness({ data }) {
         </div>
       </div>
 
-      <CompletenessTable title="ความครบถ้วนของข้อมูลการมาทำเวร" rows={dutyCompleteness} totalLabel="จำนวนพื้นที่ทั้งหมด" />
-      <CompletenessTable title="ความครบถ้วนการให้คะแนนของประธาน" rows={scoreCompleteness} totalLabel="ต้องให้คะแนนทั้งหมด" />
+      {!activeDutyTeams.length ? (
+        <div className="empty-state">
+          <h2>ไม่มีข้อมูลสำหรับวันที่เลือก</h2>
+          <p>ระบบจะตรวจเฉพาะคณะสีเวรตามวัน และคณะสีที่ Admin บันทึกข้อมูลเพิ่มในวันนั้น</p>
+        </div>
+      ) : (
+        <>
+          <CompletenessTable
+            title="ความครบถ้วนของข้อมูลการมาทำเวร"
+            rows={dutyCompleteness}
+            totalLabel="พื้นที่ของคณะสีเวร"
+          />
+          <CompletenessTable
+            title="ความครบถ้วนการให้คะแนนของประธาน"
+            rows={scoreCompleteness}
+            totalLabel="ห้องที่ต้องให้คะแนน"
+          />
+          <div className="alert info">
+            ห้องที่เลือก “ไปกิจกรรม” จะไม่ถูกนับเป็นห้องที่ต้องให้คะแนน และไม่ถูกนำไปคำนวณคะแนนทุกประเภท
+          </div>
+        </>
+      )}
     </section>
   );
 }

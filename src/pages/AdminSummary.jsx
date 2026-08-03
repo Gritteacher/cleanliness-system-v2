@@ -97,9 +97,7 @@ function getDateHasTeamData(data, date, teamId) {
   return hasDutyRecord || hasScore;
 }
 
-function getTeamActiveDates(data, allDates, teamId, forceSingleDay = false) {
-  if (forceSingleDay) return allDates;
-
+function getTeamActiveDates(data, allDates, teamId) {
   const team = colorTeams.find((item) => item.id === teamId);
   const scheduledDates = allDates.filter((date) => {
     const day = parseLocalDate(date).getDay();
@@ -125,7 +123,7 @@ function buildRangeSummaries(data, startDate, endDate, forceSingleDay = false) {
   const allDates = getDaysInRange(startDate, endDate);
 
   return colorTeams.map((team) => {
-    const activeDates = getTeamActiveDates(data, allDates, team.id, forceSingleDay);
+    const activeDates = getTeamActiveDates(data, allDates, team.id);
     const dailySummaries = activeDates.map((date) => calculateTeamSummary(data, date, team.id));
     const firstSummary = dailySummaries[0] || calculateTeamSummary(data, startDate, team.id);
 
@@ -141,8 +139,8 @@ function buildRangeSummaries(data, startDate, endDate, forceSingleDay = false) {
       teamId: team.id,
       activeDateCount: activeDates.length,
       activeDates,
-      totalRooms: firstSummary.totalRooms,
-      eligibleRooms: firstSummary.eligibleRooms,
+      totalRooms: activeDates.length ? firstSummary.totalRooms : 0,
+      eligibleRooms: activeDates.length ? firstSummary.eligibleRooms : 0,
       completeRooms: dailySummaries.reduce((sum, item) => sum + Number(item.completeRooms || 0), 0),
       waitingRooms: dailySummaries.reduce((sum, item) => sum + Number(item.waitingRooms || 0), 0),
       missingRecords: dailySummaries.reduce((sum, item) => sum + Number(item.missingRecords || 0), 0),

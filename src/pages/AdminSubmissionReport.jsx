@@ -142,7 +142,9 @@ function buildReportRows(data, allDates, teamFilter, statusFilter, forceEveryTea
         const countedText = isActivity ? 'ไม่นำมาคำนวณทุกคะแนน' : 'นำมาคำนวณ';
         const completeText = isActivity
           ? 'ยกเว้นการประเมิน'
-          : summary.complete ? 'สมบูรณ์' : summary.statusText;
+          : summary.complete
+            ? 'สมบูรณ์'
+            : summary.missingReasons.join(' • ');
 
         const scoreDetails = colorTeams.map((evaluatorTeam) => {
           const score = summary.scores.find((item) => item.evaluatorColorId === evaluatorTeam.id);
@@ -217,7 +219,7 @@ export default function AdminSubmissionReport({ data }) {
         start: selectedDate,
         end: selectedDate,
         label: formatThaiDate(selectedDate),
-        forceEveryTeam: true
+        forceEveryTeam: false
       };
     }
 
@@ -260,7 +262,7 @@ export default function AdminSubmissionReport({ data }) {
       start,
       end,
       label: getRangeLabel(start, end),
-      forceEveryTeam: start === end
+      forceEveryTeam: false
     };
   }, [reportType, selectedDate, selectedMonth, startMonth, endMonth, selectedYear, startDate, endDate]);
 
