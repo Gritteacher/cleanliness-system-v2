@@ -204,3 +204,14 @@ supabase/
 - คง `vite` และ `@vitejs/plugin-react` ไว้ใน `package.json`
 - ขั้น Build รัน `npm ci` ก่อน `vite build` เพื่อให้ `node_modules` สมบูรณ์
 - ไม่เปลี่ยนฟังก์ชันคะแนน ฐานข้อมูล PDF หรืออีเมล
+
+
+## Netlify Yarn install fix
+
+- เปลี่ยน package manager จาก npm เป็น Yarn 1.22.22
+- ลบ `package-lock.json` และ `.npmrc` เพื่อไม่ให้ Netlify เรียก npm
+- เพิ่ม `packageManager: yarn@1.22.22` และ `.yarnrc`
+- คง Node.js 22.23.2 สำหรับ Supabase รุ่นปัจจุบัน
+- ล็อกเวอร์ชัน dependencies หลักเพื่อลดการเปลี่ยนแปลงระหว่าง deploy
+- เปลี่ยนคำสั่ง build เป็น `yarn build`
+- ไม่เปลี่ยนระบบคะแนน ฐานข้อมูล PDF อีเมล หรือหน้าจอเช็กลิสต์ของ Admin
