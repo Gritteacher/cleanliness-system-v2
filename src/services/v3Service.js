@@ -191,3 +191,10 @@ export async function updateMyDisplayName(displayName) {
   if (error) throw error;
   return data;
 }
+
+export async function publishDailyResults(scoreDate) {
+  assertClient();
+  const { data, error } = await supabase.rpc('cs_admin_publish_day', { p_score_date: scoreDate });
+  if (error) throw error;
+  return data?.[0] || { team_count: 0, room_count: 0 };
+}
