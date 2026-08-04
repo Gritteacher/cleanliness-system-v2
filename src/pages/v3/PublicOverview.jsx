@@ -68,7 +68,7 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
             {rooms.map((room) => (
               <article className="result-row" key={room.id}>
                 <span className="result-team" style={{ background: room.team?.accent_color }} />
-                <div><strong>{room.room_label}</strong><small>{room.area?.name} · {room.team?.short_name}</small></div>
+                <div><strong>{room.room_label}</strong><small>{room.team?.short_name || 'ไม่ระบุคณะ'}</small></div>
                 <span className={`status-chip ${room.duty_status}`}>{room.duty_status === 'present' ? 'เข้าทำเวร' : room.duty_status === 'activity' ? 'ไปกิจกรรม' : 'ไม่เข้าทำเวร'}</span>
                 <strong className="result-score">{room.cleanliness_score == null ? '—' : Number(room.cleanliness_score).toFixed(1)}</strong>
                 <p>{room.reason_summary || 'ยังไม่มีหมายเหตุ'}</p>

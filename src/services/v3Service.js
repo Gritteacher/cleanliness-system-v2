@@ -24,7 +24,7 @@ export async function loadPublicOverview(scoreDate = bangkokDate()) {
   const [teamsResult, scoresResult, roomsResult] = await Promise.all([
     supabase.from('cs_teams').select('*').eq('active', true).order('sort_order'),
     supabase.from('cs_daily_team_scores').select('*, team:cs_teams(*)').eq('score_date', scoreDate).order('total_score', { ascending: false }),
-    supabase.from('cs_published_room_results').select('*, team:cs_teams(*), area:cs_areas(*)').eq('score_date', scoreDate).order('room_label')
+    supabase.from('cs_published_room_results').select('*, team:cs_teams(*)').eq('score_date', scoreDate).order('room_label')
   ]);
 
   return {
