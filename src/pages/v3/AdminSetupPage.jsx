@@ -46,7 +46,7 @@ export default function AdminSetupPage({ data, onRefresh, navigate }) {
     setBusy(true); setMessage('');
     try {
       const result = await publishDailyResults(data.date);
-      setMessage(`เผยแพร่ผลแล้ว ${result.team_count} คณะ · ${result.room_count} พื้นที่`);
+      setMessage(`เผยแพร่ผลแล้ว ${result.team_count} คณะ · ${result.room_count} พื้นที่ · เตรียมรูปสาธารณะ ${result.photo_count || 0} รูป`);
       await onRefresh();
     } catch (error) { setMessage(error.message); }
     setBusy(false);

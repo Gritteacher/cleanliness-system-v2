@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import Icon from '../../components/Icon.jsx';
-import { saveDutySubmission, saveEvaluation } from '../../services/v3Service.js';
+import { saveDutySubmission, saveEvaluation, uploadSubmissionPhoto } from '../../services/v3Service.js';
+
+const workflowLabels = { draft: 'ฉบับร่าง', submitted: 'ส่งแล้ว', locked: 'เผยแพร่แล้ว', void: 'ยกเลิก' };
 
 function scheduledTeam(data) {
   const override = data.overrides?.[0];
@@ -42,6 +44,18 @@ export default function WorkspacePage({ user, data, loading, date, onDateChange,
     setBusyId('');
   }
 
+  async function uploadPhoto(event, submission) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusyId(`photo-${submission.id}`); setNotice('');
+    try {
+      await uploadSubmissionPhoto({ submissionId: submission.id, userId: user.id, file });
+      setNotice('อัปโหลดรูปภาพแล้ว'); await onRefresh();
+    } catch (error) { setNotice(error.message); }
+    event.target.value = '';
+    setBusyId('');
+  }
+
   if (loading) return <div className="page-container"><div className="loading-panel">กำลังเตรียมพื้นที่ทำงาน…</div></div>;
   if (!data?.term) return <div className="page-container"><div className="empty-panel tall"><span className="empty-icon"><Icon name="calendar" /></span><h2>ยังไม่ได้เปิดภาคเรียน</h2><p>{isAdmin ? 'ตั้งค่าภาคเรียนและพื้นที่ก่อนเริ่มใช้งาน' : 'กรุณารอผู้ดูแลระบบตั้งค่าภาคเรียน'}</p>{isAdmin ? <button className="button button-primary" onClick={() => navigate('/admin')}>ไปตั้งค่าระบบ</button> : null}</div></div>;
 
@@ -61,13 +75,17 @@ export default function WorkspacePage({ user, data, loading, date, onDateChange,
       <section className="workspace-section">
         <div className="section-heading"><div><span className="eyebrow">เวรประจำวัน</span><h2>บันทึกการดูแลพื้นที่</h2></div><span className="team-duty-pill">{teamId ? data.assignments.find((a) => a.team_id === teamId)?.team?.short_name || teamId : 'งดเวร'}</span></div>
         {!teamId ? <div className="empty-panel compact"><h3>วันนี้ไม่มีคณะเข้าเวร</h3><p>อาจเป็นวันหยุดหรือมีการตั้งค่างดเวรไว้</p></div> : !isAdmin && user.teamId !== teamId ? <div className="empty-panel compact"><h3>วันนี้ไม่ใช่เวรของคณะคุณ</h3><p>คุณยังสามารถประเมินพื้นที่ที่ส่งข้อมูลแล้วได้ด้านล่าง</p></div> : assignments.length ? (
-          <div className="form-grid">{assignments.map((assignment) => { const current = submissions.find((row) => row.assignment_id === assignment.id); return (
+          <div className="form-grid">{assignments.map((assignment) => { const current = submissions.find((row) => row.assignment_id === assignment.id); const locked = current?.workflow_status === 'locked'; return (
             <form className="task-card" key={assignment.id} onSubmit={(event) => submitDuty(event, assignment)}>
-              <div className="task-card-head"><span className="area-code">{assignment.area?.code}</span><span className={`status-chip ${current?.workflow_status || 'draft'}`}>{current?.workflow_status === 'submitted' ? 'ส่งแล้ว' : 'ฉบับร่าง'}</span></div>
+              <div className="task-card-head"><span className="area-code">{assignment.area?.code}</span><span className={`status-chip ${current?.workflow_status || 'draft'}`}>{workflowLabels[current?.workflow_status] || workflowLabels.draft}</span></div>
               <h3>{assignment.room_label}</h3><p>{assignment.area?.name}</p>
-              <div className="field-row"><label>สถานะ<select name="status" defaultValue={current?.duty_status || 'present'}><option value="present">เข้าทำเวร</option><option value="absent">ไม่เข้าทำเวร</option><option value="activity">ไปกิจกรรม</option></select></label><label>จำนวนนักเรียน<input name="studentCount" type="number" min="0" defaultValue={current?.student_count || 0} /></label></div>
-              <label>หมายเหตุ<textarea name="note" defaultValue={current?.note || ''} placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" /></label>
-              <div className="task-actions"><button className="button button-secondary" name="action" value="draft" disabled={busyId === assignment.id}>บันทึกร่าง</button><button className="button button-primary" name="action" value="submit" disabled={busyId === assignment.id}>ยืนยันส่งข้อมูล</button></div>
+              <div className="field-row"><label>สถานะ<select name="status" defaultValue={current?.duty_status || 'present'} disabled={locked}><option value="present">เข้าทำเวร</option><option value="absent">ไม่เข้าทำเวร</option><option value="activity">ไปกิจกรรม</option></select></label><label>จำนวนนักเรียน<input name="studentCount" type="number" min="0" defaultValue={current?.student_count || 0} disabled={locked} /></label></div>
+              <label>หมายเหตุ<textarea name="note" defaultValue={current?.note || ''} placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" disabled={locked} /></label>
+              <div className="task-photo-block">
+                <div className="task-photo-list">{(current?.photos || []).map((photo) => <a href={photo.full_url || photo.view_url} target="_blank" rel="noreferrer" key={photo.id}><img src={photo.view_url || photo.full_url} alt={`รูป ${assignment.room_label}`} /></a>)}</div>
+                {!current ? <small>บันทึกร่างก่อนจึงจะเพิ่มรูปได้</small> : locked ? <small>รูปถูกล็อกพร้อมผลที่เผยแพร่แล้ว</small> : <label className="photo-upload-button">{busyId === `photo-${current.id}` ? 'กำลังอัปโหลด…' : 'เพิ่มรูปภาพ'}<input type="file" accept="image/*" capture="environment" onChange={(event) => uploadPhoto(event, current)} disabled={busyId === `photo-${current.id}`} /></label>}
+              </div>
+              <div className="task-actions"><button className="button button-secondary" name="action" value="draft" disabled={locked || busyId === assignment.id}>บันทึกร่าง</button><button className="button button-primary" name="action" value="submit" disabled={locked || busyId === assignment.id}>ยืนยันส่งข้อมูล</button></div>
             </form>); })}</div>
         ) : <div className="empty-panel compact"><h3>ยังไม่ได้กำหนดพื้นที่ให้คณะนี้</h3><p>ผู้ดูแลระบบสามารถเพิ่มพื้นที่ได้ในหน้าจัดการระบบ</p></div>}
       </section>
