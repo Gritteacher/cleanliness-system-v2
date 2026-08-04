@@ -61,7 +61,7 @@ export default function AdminSetupPage({ data, onRefresh, navigate }) {
 
   return (
     <div className="page-container admin-page">
-      <section className="workspace-heading"><div><span className="eyebrow">Admin Console</span><h1>ตั้งค่าระบบ</h1><p>เตรียมข้อมูลหลัก ตรวจงาน และเผยแพร่ผลประจำวัน</p></div><div className="admin-heading-actions"><button className="button button-secondary" onClick={() => navigate('/workspace')}><Icon name="clipboard" /> ดูงานวันนี้</button><button className="button button-primary" onClick={publishToday} disabled={busy || !data?.submissions?.length}><Icon name="sparkle" /> เผยแพร่ผล {data?.date}</button></div></section>
+      <section className="workspace-heading"><div><span className="eyebrow">Admin Console</span><h1>ตั้งค่าระบบ</h1><p>เตรียมข้อมูลหลัก ตรวจงาน และเผยแพร่ผลประจำวัน</p></div><div className="admin-heading-actions"><button className="button button-secondary" onClick={() => navigate('/admin/summary')}><Icon name="chart" /> สรุปผล</button><button className="button button-secondary" onClick={() => navigate('/workspace')}><Icon name="clipboard" /> ดูงานวันนี้</button><button className="button button-primary" onClick={publishToday} disabled={busy || !data?.submissions?.length}><Icon name="sparkle" /> เผยแพร่ผล {data?.date}</button></div></section>
       {message ? <div className="notice-bar">{message}</div> : null}
       <div className="readiness-grid">{readiness.map((item) => <article className={item.done ? 'done' : ''} key={item.label}><span><Icon name={item.done ? 'check' : 'plus'} /></span><div><small>{item.label}</small><strong>{item.value}</strong></div></article>)}</div>
 

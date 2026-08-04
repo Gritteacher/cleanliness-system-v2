@@ -1,26 +1,34 @@
+import { useState } from 'react';
 import Icon from '../../components/Icon.jsx';
 
 function thaiDate(value) {
   return new Intl.DateTimeFormat('th-TH', { dateStyle: 'long', timeZone: 'Asia/Bangkok' }).format(new Date(`${value}T12:00:00+07:00`));
 }
 
-function scoreForTeam(scores, teamId) {
-  return scores.find((score) => score.team_id === teamId);
+function statusLabel(status) {
+  if (status === 'present') return 'เข้าทำเวร';
+  if (status === 'activity') return 'ไปกิจกรรม';
+  return 'ไม่เข้าทำเวร';
+}
+
+function displayScore(value) {
+  return value == null ? '—' : Number(value).toFixed(1);
 }
 
 export default function PublicOverview({ data, loading, date, onDateChange, onRefresh, navigate }) {
-  const teams = data?.teams || [];
-  const scores = data?.scores || [];
+  const [activePhoto, setActivePhoto] = useState(null);
+  const dutyTeam = data?.scheduledTeam || null;
+  const score = data?.scores?.find((item) => item.team_id === dutyTeam?.id) || null;
   const rooms = data?.rooms || [];
-  const ranked = [...teams].sort((a, b) => Number(scoreForTeam(scores, b.id)?.total_score || 0) - Number(scoreForTeam(scores, a.id)?.total_score || 0));
+  const combinedScore = score ? Number(score.cleanliness_score || 0) + Number(score.attendance_score || 0) : null;
 
   return (
     <div className="page-container public-page">
-      <section className="hero-panel">
+      <section className="hero-panel public-hero">
         <div className="hero-copy">
-          <span className="eyebrow"><span className="status-dot" /> พื้นที่สาธารณะ</span>
-          <h1>โรงเรียนสะอาด<br /><em>เริ่มจากพวกเราทุกคน</em></h1>
-          <p>ติดตามผลการดูแลพื้นที่ของแต่ละคณะอย่างโปร่งใส เข้าใจง่าย และเป็นกำลังใจให้กันทุกวัน</p>
+          <span className="eyebrow"><span className="status-dot" /> ผลเวรประจำวัน</span>
+          <h1>{dutyTeam ? <><span>เวรของ</span><br /><em>{dutyTeam.short_name}</em></> : <>เลือกวันที่<br /><em>เพื่อตรวจสอบเวร</em></>}</h1>
+          <p>{dutyTeam ? `ติดตามภาพการดูแลพื้นที่ของ${dutyTeam.name} พร้อมผลประเมินที่ผ่านการตรวจสอบและเผยแพร่แล้ว` : 'ระบบจะแสดงคณะสีและพื้นที่ตามตารางเวรของวันที่เลือก'}</p>
           <div className="hero-actions">
             <label className="date-control">
               <Icon name="calendar" />
@@ -33,53 +41,43 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
           <div className="sun-orb" />
           <div className="leaf leaf-one" />
           <div className="leaf leaf-two" />
-          <div className="hero-score"><small>ประจำวันที่</small><strong>{thaiDate(date)}</strong><span>{rooms.length} พื้นที่เผยแพร่แล้ว</span></div>
+          <div className="hero-score"><small>ประจำวันที่</small><strong>{thaiDate(date)}</strong><span>{dutyTeam ? `${dutyTeam.short_name} · ${rooms.length} พื้นที่เผยแพร่แล้ว` : 'ไม่มีคณะเข้าเวรตามตาราง'}</span></div>
         </div>
       </section>
 
-      <section className="section-block">
-        <div className="section-heading">
-          <div><span className="eyebrow">ภาพรวม 5 คณะ</span><h2>คะแนนวันนี้</h2></div>
-          <p>คะแนนที่แสดงเป็นผลซึ่งผ่านการตรวจสอบและเผยแพร่แล้ว</p>
-        </div>
+      {loading ? <div className="room-card-grid public-loading-grid">{[1, 2, 3].map((item) => <div className="room-card-skeleton" key={item} />)}</div> : dutyTeam ? <>
+        <section className="duty-overview" style={{ '--team': dutyTeam.accent_color, '--team-soft': dutyTeam.soft_color }}>
+          <div className="duty-team-copy"><span className="duty-team-mark" /><div><small>คณะสีที่เข้าเวร</small><h2>{dutyTeam.short_name}</h2><p>{dutyTeam.color_name}</p></div></div>
+          <div className="duty-score-strip">
+            <span><small>ความสะอาด</small><strong>{displayScore(score?.cleanliness_score)}<i>/10</i></strong></span>
+            <span><small>การบริหารจัดการ</small><strong>{displayScore(score?.attendance_score)}<i>/10</i></strong></span>
+            <span className="total"><small>รวม</small><strong>{displayScore(combinedScore)}<i>/20</i></strong></span>
+          </div>
+        </section>
 
-        {loading ? <div className="skeleton-grid">{teams.concat([1, 2, 3, 4, 5]).slice(0, 5).map((_, index) => <div className="skeleton-card" key={index} />)}</div> : (
-          <div className="team-grid">
-            {ranked.map((team, index) => {
-              const score = scoreForTeam(scores, team.id);
-              return (
-                <article className="team-card" key={team.id} style={{ '--team': team.accent_color, '--team-soft': team.soft_color }}>
-                  <div className="team-card-top"><span className="team-swatch" /><span className="rank">#{score ? index + 1 : '–'}</span></div>
-                  <h3>{team.short_name}</h3><p>{team.color_name}</p>
-                  <div className="score-line"><strong>{score ? Number(score.total_score).toFixed(1) : '—'}</strong><span>/ 30</span></div>
-                  <div className="score-meter"><i style={{ width: `${Math.min(100, (Number(score?.total_score || 0) / 30) * 100)}%` }} /></div>
-                  <div className="score-parts"><span>สะอาด {score ? Number(score.cleanliness_score).toFixed(1) : '–'}</span><span>เวร {score ? Number(score.attendance_score).toFixed(1) : '–'}</span></div>
-                </article>
-              );
+        <section className="section-block results-section photo-results-section">
+          <div className="section-heading"><div><span className="eyebrow">ภาพผลการปฏิบัติงาน</span><h2>พื้นที่ในความรับผิดชอบ</h2></div><span className="count-badge">{rooms.length} พื้นที่</span></div>
+          {rooms.length ? <div className="room-card-grid">
+            {rooms.map((room) => {
+              const imageUrl = room.photo_public_urls?.[0] || room.legacy_public_url || room.legacy_thumbnail_url || null;
+              const roomCombined = room.cleanliness_score == null || room.attendance_score == null ? null : Number(room.cleanliness_score) + Number(room.attendance_score);
+              return <article className="room-result-card" key={room.id} style={{ '--team': dutyTeam.accent_color, '--team-soft': dutyTeam.soft_color }}>
+                {imageUrl ? <button className="room-photo-frame" type="button" onClick={() => setActivePhoto({ url: imageUrl, label: room.room_label })} aria-label={`ดูภาพ ${room.room_label} ขนาดใหญ่`}><img src={imageUrl} alt={`ภาพพื้นที่ ${room.room_label}`} loading="lazy" /><span><Icon name="sparkle" size={16} /> กดเพื่อดูภาพใหญ่</span></button> : <div className="room-photo-frame room-photo-placeholder"><span className="empty-icon"><Icon name="sparkle" /></span><strong>ยังไม่มีรูปภาพ</strong></div>}
+                <div className="room-result-body">
+                  <div className="room-card-title"><div><span className="area-code">{room.team?.short_name || dutyTeam.short_name}</span><h3>{room.room_label}</h3></div><span className={`status-chip ${room.duty_status}`}>{statusLabel(room.duty_status)}</span></div>
+                  <div className="room-score-row"><span><small>ความสะอาด</small><strong>{displayScore(room.cleanliness_score)}</strong></span><span><small>บริหารจัดการ</small><strong>{displayScore(room.attendance_score)}</strong></span><span className="total"><small>รวม</small><strong>{displayScore(roomCombined)}</strong></span></div>
+                  <p>{room.reason_summary || 'ไม่มีหมายเหตุเพิ่มเติม'}</p>
+                </div>
+              </article>;
             })}
-          </div>
-        )}
-      </section>
+          </div> : <div className="empty-panel"><span className="empty-icon"><Icon name="sparkle" size={28} /></span><h3>ยังไม่มีผลเผยแพร่ในวันนี้</h3><p>คณะเวรถูกกำหนดแล้ว แต่ผู้ดูแลยังไม่ได้เผยแพร่ผลรายพื้นที่</p><button className="button button-text" type="button" onClick={() => navigate('/login')}>เข้าสู่พื้นที่ทำงาน <Icon name="arrow" /></button></div>}
+        </section>
+      </> : <section className="section-block"><div className="empty-panel tall"><span className="empty-icon"><Icon name="calendar" /></span><h2>วันนี้ไม่มีคณะเข้าเวร</h2><p>อาจเป็นวันหยุด วันเสาร์–อาทิตย์ หรือมีการตั้งค่างดเวรสำหรับวันที่เลือก</p></div></section>}
 
-      <section className="section-block results-section">
-        <div className="section-heading"><div><span className="eyebrow">รายละเอียด</span><h2>ผลรายพื้นที่</h2></div><span className="count-badge">{rooms.length} รายการ</span></div>
-        {rooms.length ? (
-          <div className="result-list">
-            {rooms.map((room) => (
-              <article className="result-row" key={room.id}>
-                <span className="result-team" style={{ background: room.team?.accent_color }} />
-                {room.photo_public_urls?.[0] || room.legacy_thumbnail_url || room.legacy_public_url ? <img className="result-thumb" src={room.photo_public_urls?.[0] || room.legacy_thumbnail_url || room.legacy_public_url} alt={`ภาพพื้นที่ ${room.room_label}`} loading="lazy" /> : <span className="result-thumb placeholder">ไม่มีรูป</span>}
-                <div><strong>{room.room_label}</strong><small>{room.team?.short_name || 'ไม่ระบุคณะ'}</small></div>
-                <span className={`status-chip ${room.duty_status}`}>{room.duty_status === 'present' ? 'เข้าทำเวร' : room.duty_status === 'activity' ? 'ไปกิจกรรม' : 'ไม่เข้าทำเวร'}</span>
-                <strong className="result-score">{room.cleanliness_score == null ? '—' : Number(room.cleanliness_score).toFixed(1)}</strong>
-                <p>{room.reason_summary || 'ยังไม่มีหมายเหตุ'}</p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-panel"><span className="empty-icon"><Icon name="sparkle" size={28} /></span><h3>ยังไม่มีผลเผยแพร่ในวันนี้</h3><p>เมื่อผู้ดูแลตรวจสอบข้อมูลแล้ว ผลคะแนนรายพื้นที่จะแสดงที่นี่</p><button className="button button-text" type="button" onClick={() => navigate('/login')}>เข้าสู่พื้นที่ทำงาน <Icon name="arrow" /></button></div>
-        )}
-      </section>
+      {activePhoto ? <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label={`ภาพพื้นที่ ${activePhoto.label}`} onClick={() => setActivePhoto(null)}>
+        <button className="photo-lightbox-close" type="button" onClick={() => setActivePhoto(null)} aria-label="ปิดภาพขนาดใหญ่">×</button>
+        <figure onClick={(event) => event.stopPropagation()}><img src={activePhoto.url} alt={`ภาพพื้นที่ ${activePhoto.label}`} /><figcaption>{activePhoto.label}</figcaption></figure>
+      </div> : null}
     </div>
   );
 }

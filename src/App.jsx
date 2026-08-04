@@ -5,6 +5,7 @@ import PublicOverview from './pages/v3/PublicOverview.jsx';
 import LoginPage from './pages/v3/LoginPage.jsx';
 import WorkspacePage from './pages/v3/WorkspacePage.jsx';
 import AdminSetupPage from './pages/v3/AdminSetupPage.jsx';
+import AdminSummaryPage from './pages/v3/AdminSummaryPage.jsx';
 import AccountPage from './pages/v3/AccountPage.jsx';
 import { bangkokDate, loadPublicOverview, loadWorkspace } from './services/v3Service.js';
 import { getCurrentUser, logout } from './utils/auth.js';
@@ -70,6 +71,7 @@ export default function App() {
   let page;
   if (route === '/login') page = user ? <WorkspacePage user={user} data={workspace} loading={workspaceLoading} date={date} onDateChange={setDate} onRefresh={refreshWorkspace} navigate={navigate} /> : <LoginPage onLogin={handleLogin} navigate={navigate} />;
   else if (route === '/workspace') page = authenticated(<WorkspacePage user={user} data={workspace} loading={workspaceLoading} date={date} onDateChange={setDate} onRefresh={refreshWorkspace} navigate={navigate} />);
+  else if (route === '/admin/summary') page = authenticated(<AdminSummaryPage navigate={navigate} />, true);
   else if (route === '/admin') page = authenticated(<AdminSetupPage data={workspace} onRefresh={refreshWorkspace} navigate={navigate} />, true);
   else if (route === '/account') page = authenticated(<AccountPage user={user} onUpdated={refreshProfile} onLogout={handleLogout} />);
   else page = <PublicOverview data={publicData} loading={publicLoading} date={date} onDateChange={setDate} onRefresh={refreshPublic} navigate={navigate} />;
