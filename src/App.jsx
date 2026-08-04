@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AppHeader from './components/AppHeader.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import PublicOverview from './pages/v3/PublicOverview.jsx';
@@ -21,22 +21,34 @@ export default function App() {
   const [publicLoading, setPublicLoading] = useState(true);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const [error, setError] = useState('');
+  const publicRequestId = useRef(0);
+  const workspaceRequestId = useRef(0);
 
   const navigate = useCallback((path) => { window.location.hash = path; setRoute(path); window.scrollTo({ top: 0, behavior: 'smooth' }); }, []);
 
   const refreshPublic = useCallback(async () => {
+    const requestId = ++publicRequestId.current;
     setPublicLoading(true); setError('');
-    try { setPublicData(await loadPublicOverview(date)); }
-    catch (loadError) { setError(loadError.message); }
-    setPublicLoading(false);
+    try {
+      const next = await loadPublicOverview(date);
+      if (requestId === publicRequestId.current) setPublicData(next);
+    } catch (loadError) {
+      if (requestId === publicRequestId.current) setError(loadError.message);
+    }
+    if (requestId === publicRequestId.current) setPublicLoading(false);
   }, [date]);
 
   const refreshWorkspace = useCallback(async () => {
     if (!user) return;
+    const requestId = ++workspaceRequestId.current;
     setWorkspaceLoading(true); setError('');
-    try { setWorkspace(await loadWorkspace(date)); }
-    catch (loadError) { setError(loadError.message); }
-    setWorkspaceLoading(false);
+    try {
+      const next = await loadWorkspace(date);
+      if (requestId === workspaceRequestId.current) setWorkspace(next);
+    } catch (loadError) {
+      if (requestId === workspaceRequestId.current) setError(loadError.message);
+    }
+    if (requestId === workspaceRequestId.current) setWorkspaceLoading(false);
   }, [date, user]);
 
   useEffect(() => { const handler = () => setRoute(currentRoute()); window.addEventListener('hashchange', handler); return () => window.removeEventListener('hashchange', handler); }, []);
