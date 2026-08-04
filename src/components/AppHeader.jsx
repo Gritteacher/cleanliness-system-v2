@@ -1,43 +1,45 @@
-import { getTeam } from '../data/colorTeams.js';
-
-const LOGO_URL = 'https://www.tsn.ac.th/web/wp-content/uploads/2013/12/Logo_Blue-700x639.png';
+import Icon from './Icon.jsx';
 
 export default function AppHeader({ user, route, navigate, onLogout }) {
-  const team = getTeam(user?.colorTeamId);
+  const links = user
+    ? [
+        { path: '/', label: 'ผลคะแนน' },
+        { path: '/workspace', label: 'พื้นที่ทำงาน' },
+        ...(user.role === 'admin' ? [{ path: '/admin', label: 'จัดการระบบ' }] : []),
+        { path: '/account', label: 'บัญชี' }
+      ]
+    : [{ path: '/', label: 'ผลคะแนน' }];
 
   return (
-    <header className="app-header">
-      <div className="brand" onClick={() => navigate('/')} role="button" tabIndex="0">
-        <img src={LOGO_URL} alt="โรงเรียนเทพศิรินทร์ นนทบุรี" />
-        <div>
-          <h1>ระบบตรวจความสะอาดคณะสี</h1>
-          <p>ปีการศึกษา 2569 • โรงเรียนเทพศิรินทร์ นนทบุรี</p>
-        </div>
-      </div>
+    <header className="topbar">
+      <button className="brand-lockup" type="button" onClick={() => navigate('/')}>
+        <span className="brand-mark"><Icon name="sparkle" size={23} /></span>
+        <span>
+          <strong>Clean & Care</strong>
+          <small>เทพศิรินทร์ นนทบุรี</small>
+        </span>
+      </button>
 
-      <div className="header-actions">
+      <nav className="desktop-nav" aria-label="เมนูหลัก">
+        {links.map((link) => (
+          <button key={link.path} className={route === link.path ? 'active' : ''} type="button" onClick={() => navigate(link.path)}>
+            {link.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="topbar-actions">
         {user ? (
           <>
-            <div className="user-chip">
-              <strong>{user.displayName}</strong>
-              <span>{user.role === 'ADMIN' ? 'Admin' : team?.shortName}</span>
-            </div>
-            <button
-              className={route === '/account' ? 'btn btn-primary' : 'btn btn-ghost'}
-              type="button"
-              onClick={() => navigate('/account')}
-            >
-              บัญชี
+            <button className="profile-pill" type="button" onClick={() => navigate('/account')}>
+              <span className="avatar">{user.displayName?.slice(0, 1) || 'U'}</span>
+              <span className="profile-copy"><strong>{user.displayName}</strong><small>{user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.team?.short_name}</small></span>
             </button>
-            <button className="btn btn-ghost" type="button" onClick={onLogout}>ออกจากระบบ</button>
+            <button className="icon-button" type="button" onClick={onLogout} aria-label="ออกจากระบบ"><Icon name="logout" /></button>
           </>
         ) : (
-          <button
-            className={route === '/login' ? 'btn btn-primary' : 'btn btn-ghost'}
-            type="button"
-            onClick={() => navigate('/login')}
-          >
-            เข้าสู่ระบบ
+          <button className="button button-primary button-compact" type="button" onClick={() => navigate('/login')}>
+            <Icon name="login" size={18} /> เข้าสู่ระบบ
           </button>
         )}
       </div>
