@@ -5,6 +5,14 @@ import PhotoPreview from '../components/PhotoPreview.jsx';
 import { colorTeams } from '../data/colorTeams.js';
 import { todayISO, formatThaiDate } from '../utils/dateUtils.js';
 import { STATUS_LABELS, STATUS_BADGE, calculateRoomSummary } from '../utils/scoring.js';
+import { addLog } from '../utils/storage.js';
+import {
+  upsertCleanScore,
+  deleteCleanScoreRemote,
+  deleteCleanScoresRemote,
+  insertEditLog,
+  insertEditLogs
+} from '../services/supabaseService.js';
 
 const THAI_MONTHS = [
   'มกราคม',
@@ -150,6 +158,7 @@ function buildReportRows(data, allDates, teamFilter, statusFilter, forceEveryTea
           const score = summary.scores.find((item) => item.evaluatorColorId === evaluatorTeam.id);
           return {
             evaluatorTeam,
+            score: score || null,
             hasScore: Boolean(score),
             cleanScore: score ? Number(score.cleanScore || 0) : null,
             scoreNote: score?.scoreNote || '',
@@ -197,7 +206,7 @@ function buildReportRows(data, allDates, teamFilter, statusFilter, forceEveryTea
   ));
 }
 
-export default function AdminSubmissionReport({ data }) {
+export default function AdminSubmissionReport({ data, setData, user, refreshData }) {
   const today = todayISO();
   const currentMonth = today.slice(0, 7);
   const currentYear = today.slice(0, 4);
@@ -212,6 +221,9 @@ export default function AdminSubmissionReport({ data }) {
   const [endDate, setEndDate] = useState(today);
   const [teamFilter, setTeamFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [editingScore, setEditingScore] = useState(null);
+  const [scoreActionBusy, setScoreActionBusy] = useState('');
+  const [scoreManageMessage, setScoreManageMessage] = useState('');
 
   const range = useMemo(() => {
     if (reportType === 'day') {
@@ -287,9 +299,216 @@ export default function AdminSubmissionReport({ data }) {
     };
   }, [rows]);
 
-  function printReport() {
-    window.print();
+
+function applyLocalScoreChanges({ updatedScores = [], deletedIds = [], logs = [] }) {
+  const deletedSet = new Set(deletedIds);
+  const scoreMap = new Map(
+    (data.cleanScores || [])
+      .filter((score) => !deletedSet.has(score.id))
+      .map((score) => [score.id, score])
+  );
+
+  updatedScores.forEach((score) => {
+    scoreMap.set(score.id, score);
+  });
+
+  let nextData = {
+    ...data,
+    cleanScores: Array.from(scoreMap.values())
+  };
+
+  logs.forEach((log) => {
+    nextData = addLog(nextData, log);
+  });
+
+  setData(nextData);
+}
+
+async function refreshAfterScoreAction() {
+  try {
+    await refreshData();
+  } catch {
+    // ใช้ข้อมูลล่าสุดจาก state ต่อได้ หากโหลดจากระบบชั่วคราวไม่สำเร็จ
   }
+}
+
+async function saveScoreEdit(event) {
+  event.preventDefault();
+  if (!editingScore?.score) return;
+
+  const formData = new FormData(event.currentTarget);
+  const cleanScore = Number(formData.get('cleanScore'));
+  const scoreNote = String(formData.get('scoreNote') || '').trim();
+
+  if (!Number.isFinite(cleanScore) || cleanScore < 0 || cleanScore > 10) {
+    setScoreManageMessage('กรุณากรอกคะแนนระหว่าง 0–10');
+    return;
+  }
+
+  const oldScore = editingScore.score;
+  const nextScore = {
+    ...oldScore,
+    cleanScore,
+    scoreNote,
+    submittedBy: user.id,
+    submittedName: `${user.displayName} (Admin แก้ไข)`,
+    updatedAt: new Date().toISOString()
+  };
+
+  const log = {
+    id: `log-${Date.now()}`,
+    editedAt: new Date().toISOString(),
+    action: 'ADMIN_UPDATE_SPECIFIC_SCORE',
+    tableName: 'cleanScores',
+    recordId: oldScore.id,
+    oldData: oldScore,
+    newData: nextScore,
+    editedBy: user.displayName
+  };
+
+  setScoreActionBusy(oldScore.id);
+  setScoreManageMessage('');
+
+  try {
+    await upsertCleanScore(nextScore);
+
+    try {
+      await insertEditLog(log);
+    } catch {
+      // ไม่ให้ประวัติการแก้ไขทำให้การแก้คะแนนหลักล้มเหลว
+    }
+
+    applyLocalScoreChanges({
+      updatedScores: [nextScore],
+      logs: [log]
+    });
+
+    setEditingScore(null);
+    setScoreManageMessage(
+      `แก้ไขคะแนนห้อง ${editingScore.row.room} ของ${editingScore.detail.evaluatorTeam.shortName}เรียบร้อยแล้ว`
+    );
+    await refreshAfterScoreAction();
+  } catch (error) {
+    setScoreManageMessage(`แก้ไขคะแนนไม่สำเร็จ: ${error.message}`);
+  } finally {
+    setScoreActionBusy('');
+  }
+}
+
+async function deleteOneScore(row, detail) {
+  const score = detail.score;
+  if (!score) return;
+
+  const confirmed = window.confirm(
+    `ยืนยันลบคะแนน ${detail.evaluatorTeam.shortName}\n` +
+    `วันที่ ${formatThaiDate(row.date)} ห้อง ${row.room}\n` +
+    `พื้นที่ ${row.area.areaName}`
+  );
+
+  if (!confirmed) return;
+
+  const log = {
+    id: `log-${Date.now()}`,
+    editedAt: new Date().toISOString(),
+    action: 'ADMIN_DELETE_SPECIFIC_SCORE',
+    tableName: 'cleanScores',
+    recordId: score.id,
+    oldData: score,
+    newData: null,
+    editedBy: user.displayName
+  };
+
+  setScoreActionBusy(score.id);
+  setScoreManageMessage('');
+
+  try {
+    await deleteCleanScoreRemote(score.id);
+
+    try {
+      await insertEditLog(log);
+    } catch {
+      // ไม่ให้ประวัติการแก้ไขทำให้การลบคะแนนหลักล้มเหลว
+    }
+
+    applyLocalScoreChanges({
+      deletedIds: [score.id],
+      logs: [log]
+    });
+
+    setScoreManageMessage(
+      `ลบคะแนน${detail.evaluatorTeam.shortName} ห้อง ${row.room} วันที่ ${formatThaiDate(row.date)} เรียบร้อยแล้ว`
+    );
+    await refreshAfterScoreAction();
+  } catch (error) {
+    setScoreManageMessage(`ลบคะแนนไม่สำเร็จ: ${error.message}`);
+  } finally {
+    setScoreActionBusy('');
+  }
+}
+
+async function deleteAllAreaScores(row) {
+  const existingScores = row.scoreDetails
+    .map((detail) => detail.score)
+    .filter(Boolean);
+
+  if (!existingScores.length) {
+    setScoreManageMessage('พื้นที่นี้ยังไม่มีคะแนนให้ลบ');
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `ยืนยันลบคะแนนทั้งหมด ${existingScores.length} รายการ\n` +
+    `วันที่ ${formatThaiDate(row.date)} ห้อง ${row.room}\n` +
+    `พื้นที่ ${row.area.areaName}\n\n` +
+    'ข้อมูลการมาทำเวรและรูปภาพจะไม่ถูกลบ'
+  );
+
+  if (!confirmed) return;
+
+  const timestamp = new Date().toISOString();
+  const logs = existingScores.map((score, index) => ({
+    id: `log-${Date.now()}-${index}`,
+    editedAt: timestamp,
+    action: 'ADMIN_DELETE_AREA_SCORES',
+    tableName: 'cleanScores',
+    recordId: score.id,
+    oldData: score,
+    newData: null,
+    editedBy: user.displayName
+  }));
+
+  const actionId = `area-${row.id}`;
+  setScoreActionBusy(actionId);
+  setScoreManageMessage('');
+
+  try {
+    await deleteCleanScoresRemote(existingScores.map((score) => score.id));
+
+    try {
+      await insertEditLogs(logs);
+    } catch {
+      // ไม่ให้ประวัติการแก้ไขทำให้การลบคะแนนหลักล้มเหลว
+    }
+
+    applyLocalScoreChanges({
+      deletedIds: existingScores.map((score) => score.id),
+      logs
+    });
+
+    setScoreManageMessage(
+      `ลบคะแนนทั้งหมด ${existingScores.length} รายการของห้อง ${row.room} วันที่ ${formatThaiDate(row.date)} เรียบร้อยแล้ว`
+    );
+    await refreshAfterScoreAction();
+  } catch (error) {
+    setScoreManageMessage(`ลบคะแนนทั้งพื้นที่ไม่สำเร็จ: ${error.message}`);
+  } finally {
+    setScoreActionBusy('');
+  }
+}
+
+function printReport() {
+  window.print();
+}
 
   return (
     <section className="page-shell admin-report-page">
@@ -303,6 +522,16 @@ export default function AdminSubmissionReport({ data }) {
           <button className="btn btn-primary" type="button" onClick={printReport}>ส่งออก PDF</button>
         </div>
       </div>
+
+      {scoreManageMessage ? (
+        <div className={
+          scoreManageMessage.includes('ไม่สำเร็จ') || scoreManageMessage.includes('กรุณา')
+            ? 'alert danger print-hide'
+            : 'alert success print-hide'
+        }>
+          {scoreManageMessage}
+        </div>
+      ) : null}
 
       <div className="filter-card summary-filter-card print-hide">
         <label>
@@ -427,7 +656,8 @@ export default function AdminSubmissionReport({ data }) {
                 <th>รูป</th>
                 <th>คะแนนเฉลี่ย</th>
                 <th>ผู้ให้คะแนน</th>
-                <th>คะแนนรายประธาน / เหตุผล</th>
+                <th>คะแนนรายประธาน / เหตุผล / จัดการ</th>
+                <th className="print-hide">จัดการทั้งพื้นที่</th>
                 <th>การคำนวณ</th>
                 <th>ผู้กรอก</th>
                 <th>หมายเหตุ</th>
@@ -471,6 +701,27 @@ export default function AdminSubmissionReport({ data }) {
                               <>
                                 <span>เหตุผล: {detail.scoreNote || 'ไม่ได้ระบุเหตุผล'}</span>
                                 {detail.submittedName ? <small>โดย {detail.submittedName}</small> : null}
+                                <div className="action-row score-manage-actions print-hide">
+                                  <button
+                                    className="btn btn-small btn-ghost"
+                                    type="button"
+                                    disabled={scoreActionBusy === detail.score?.id}
+                                    onClick={() => {
+                                      setEditingScore({ row, detail, score: detail.score });
+                                      setScoreManageMessage('');
+                                    }}
+                                  >
+                                    แก้ไข
+                                  </button>
+                                  <button
+                                    className="btn btn-small btn-danger"
+                                    type="button"
+                                    disabled={scoreActionBusy === detail.score?.id}
+                                    onClick={() => deleteOneScore(row, detail)}
+                                  >
+                                    {scoreActionBusy === detail.score?.id ? 'กำลังลบ...' : 'ลบ'}
+                                  </button>
+                                </div>
                               </>
                             ) : (
                               <span>รอประธานคณะสีนี้ให้คะแนน</span>
@@ -479,6 +730,20 @@ export default function AdminSubmissionReport({ data }) {
                         ))}
                       </div>
                     )}
+                  </td>
+                  <td className="print-hide">
+                    <div className="area-score-manage-cell">
+                      <strong>{row.scoreCount} คะแนน</strong>
+                      <button
+                        className="btn btn-small btn-danger"
+                        type="button"
+                        disabled={row.isActivity || !row.scoreCount || scoreActionBusy === `area-${row.id}`}
+                        onClick={() => deleteAllAreaScores(row)}
+                      >
+                        {scoreActionBusy === `area-${row.id}` ? 'กำลังลบ...' : 'ลบคะแนนทั้งพื้นที่'}
+                      </button>
+                      <small>ไม่ลบข้อมูลการมาทำเวรและรูปภาพ</small>
+                    </div>
                   </td>
                   <td>{row.countedText}</td>
                   <td>
@@ -490,13 +755,77 @@ export default function AdminSubmissionReport({ data }) {
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan="14">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td>
+                  <td colSpan="15">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td>
                 </tr>
               ) : null}
             </tbody>
           </table>
         </div>
       </div>
+
+      {editingScore ? (
+        <div className="modal-backdrop print-hide">
+          <form className="edit-modal score-edit-modal" onSubmit={saveScoreEdit}>
+            <span className="eyebrow">Admin Score Edit</span>
+            <h3>แก้ไขคะแนนเฉพาะรายการ</h3>
+
+            <div className="info-panel">
+              <strong>
+                {formatThaiDate(editingScore.row.date)} • ห้อง {editingScore.row.room}
+              </strong>
+              <p>{editingScore.row.area.areaName}</p>
+              <TeamBadge
+                teamId={editingScore.detail.evaluatorTeam.id}
+                label={`สิทธิ์ผู้ประเมิน: ${editingScore.detail.evaluatorTeam.shortName}`}
+              />
+            </div>
+
+            <label>
+              คะแนนความสะอาด /10
+              <input
+                name="cleanScore"
+                type="number"
+                min="0"
+                max="10"
+                step="0.25"
+                defaultValue={editingScore.score.cleanScore}
+                required
+              />
+            </label>
+
+            <label>
+              เหตุผล / หมายเหตุ
+              <textarea
+                name="scoreNote"
+                defaultValue={editingScore.score.scoreNote || ''}
+                placeholder="ระบุเหตุผลของคะแนนที่แก้ไข"
+              />
+            </label>
+
+            <div className="alert warning">
+              การแก้ไขนี้จะเปลี่ยนเฉพาะคะแนนของวันที่ พื้นที่ และสิทธิ์ผู้ประเมินที่เลือก
+            </div>
+
+            <div className="action-row">
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={scoreActionBusy === editingScore.score.id}
+              >
+                {scoreActionBusy === editingScore.score.id ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
+              </button>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                disabled={scoreActionBusy === editingScore.score.id}
+                onClick={() => setEditingScore(null)}
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </section>
   );
 }

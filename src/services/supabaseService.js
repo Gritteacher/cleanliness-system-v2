@@ -262,6 +262,35 @@ export async function upsertCleanScores(scores = []) {
   return (data || []).map(scoreFromRow);
 }
 
+export async function deleteCleanScoreRemote(id) {
+  assertSupabase();
+
+  const { error } = await supabase
+    .from('clean_scores')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+  return true;
+}
+
+export async function deleteCleanScoresRemote(ids = []) {
+  assertSupabase();
+
+  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+  if (!uniqueIds.length) {
+    return { removed: 0 };
+  }
+
+  const { error } = await supabase
+    .from('clean_scores')
+    .delete()
+    .in('id', uniqueIds);
+
+  if (error) throw error;
+  return { removed: uniqueIds.length };
+}
+
 export async function upsertAreas(areas) {
   assertSupabase();
   const { error } = await supabase
