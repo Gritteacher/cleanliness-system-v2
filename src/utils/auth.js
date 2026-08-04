@@ -1,99 +1,76 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase.js';
 
-const AUTH_KEY = 'cleanliness_v2_auth';
 const USERNAME_EMAIL_DOMAIN = 'tsn.local';
 
 export function usernameToEmail(username) {
-  const clean = String(username || '').trim();
-  if (clean.includes('@')) return clean;
-  return `${clean}@${USERNAME_EMAIL_DOMAIN}`;
+  const clean = String(username || '').trim().toLowerCase();
+  return clean.includes('@') ? clean : `${clean}@${USERNAME_EMAIL_DOMAIN}`;
+}
+
+function normalizeProfile(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    displayName: row.display_name,
+    role: row.role,
+    teamId: row.team_id,
+    active: row.active,
+    team: row.team || null
+  };
 }
 
 async function fetchProfile(userId) {
   if (!isSupabaseConfigured || !supabase || !userId) return null;
 
   const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
+    .from('cs_profiles')
+    .select('*, team:cs_teams(*)')
     .eq('id', userId)
     .single();
 
-  if (error) {
-    throw error;
-  }
-
-  return {
-    id: data.id,
-    username: data.username,
-    displayName: data.display_name,
-    role: data.role,
-    colorTeamId: data.color_team_id,
-    passwordNote: data.password_note || ''
-  };
+  if (error) throw error;
+  if (!data.active) throw new Error('บัญชีนี้ถูกระงับการใช้งาน');
+  return normalizeProfile(data);
 }
 
 export async function login(username, password) {
   if (!isSupabaseConfigured || !supabase) {
-    return { ok: false, message: 'ยังไม่ได้ตั้งค่าการเชื่อมต่อระบบ' };
+    return { ok: false, message: 'ยังไม่ได้ตั้งค่า Supabase ใน Environment Variables' };
   }
 
-  const email = usernameToEmail(username);
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: usernameToEmail(username),
     password
   });
 
   if (error) {
-    return { ok: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือยังไม่ได้สร้างผู้ใช้ในระบบ' };
+    return { ok: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' };
   }
 
   try {
     const profile = await fetchProfile(data.user.id);
-    localStorage.setItem(AUTH_KEY, JSON.stringify(profile));
     return { ok: true, user: profile };
   } catch (profileError) {
     await supabase.auth.signOut();
-    return { ok: false, message: 'เข้าสู่ระบบได้ แต่ยังไม่พบข้อมูลสิทธิ์ผู้ใช้' };
+    return { ok: false, message: profileError.message || 'ไม่พบสิทธิ์ผู้ใช้ในระบบ V3' };
   }
 }
 
 export async function logout() {
-  if (isSupabaseConfigured && supabase) {
-    await supabase.auth.signOut();
-  }
-  localStorage.removeItem(AUTH_KEY);
+  if (supabase) await supabase.auth.signOut();
 }
 
 export async function getCurrentUser() {
-  if (!isSupabaseConfigured || !supabase) {
-    try {
-      const raw = localStorage.getItem(AUTH_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }
-
+  if (!isSupabaseConfigured || !supabase) return null;
   const { data } = await supabase.auth.getSession();
-  if (!data.session?.user) {
-    localStorage.removeItem(AUTH_KEY);
-    return null;
-  }
-
-  try {
-    const profile = await fetchProfile(data.session.user.id);
-    localStorage.setItem(AUTH_KEY, JSON.stringify(profile));
-    return profile;
-  } catch {
-    localStorage.removeItem(AUTH_KEY);
-    return null;
-  }
+  return data.session?.user ? fetchProfile(data.session.user.id) : null;
 }
 
 export function isAdmin(user) {
-  return user?.role === 'ADMIN';
+  return user?.role === 'admin';
 }
 
 export function isPresident(user) {
-  return user?.role === 'PRESIDENT';
+  return user?.role === 'president';
 }
