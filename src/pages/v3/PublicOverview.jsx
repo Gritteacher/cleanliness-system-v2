@@ -24,7 +24,7 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
           <div className="hero-actions">
             <label className="date-control">
               <Icon name="calendar" />
-              <input type="date" value={date} onChange={(event) => onDateChange(event.target.value)} />
+              <input type="date" value={date} onInput={(event) => onDateChange(event.currentTarget.value)} onChange={(event) => onDateChange(event.target.value)} />
             </label>
             <button className="button button-secondary" type="button" onClick={onRefresh}><Icon name="refresh" /> รีเฟรช</button>
           </div>

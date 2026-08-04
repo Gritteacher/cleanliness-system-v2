@@ -63,7 +63,7 @@ export default function WorkspacePage({ user, data, loading, date, onDateChange,
     <div className="page-container workspace-page">
       <section className="workspace-heading">
         <div><span className="eyebrow">{data.term.name}</span><h1>สวัสดี, {user.displayName}</h1><p>{user.role === 'admin' ? 'ภาพรวมการปฏิบัติงานประจำวัน' : user.team?.name}</p></div>
-        <label className="date-control"><Icon name="calendar" /><input type="date" value={date} onChange={(event) => onDateChange(event.target.value)} /></label>
+        <label className="date-control"><Icon name="calendar" /><input type="date" value={date} onInput={(event) => onDateChange(event.currentTarget.value)} onChange={(event) => onDateChange(event.target.value)} /></label>
       </section>
       {notice ? <div className="notice-bar">{notice}</div> : null}
       <div className="workspace-summary">
