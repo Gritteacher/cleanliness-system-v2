@@ -21,17 +21,48 @@ export function bangkokDate(date = new Date()) {
 
 export async function loadPublicOverview(scoreDate = bangkokDate()) {
   assertClient();
-  const [teamsResult, scoresResult, roomsResult] = await Promise.all([
+  const [teamsResult, scoresResult, roomsResult, scheduledResult] = await Promise.all([
     supabase.from('cs_teams').select('*').eq('active', true).order('sort_order'),
     supabase.from('cs_daily_team_scores').select('*, team:cs_teams(*)').eq('score_date', scoreDate).order('total_score', { ascending: false }),
-    supabase.from('cs_published_room_results').select('*, team:cs_teams(*)').eq('score_date', scoreDate).order('room_label')
+    supabase.from('cs_published_room_results').select('*, team:cs_teams(*)').eq('score_date', scoreDate).order('room_label'),
+    supabase.rpc('cs_public_scheduled_team', { p_date: scoreDate })
   ]);
+
+  const teams = throwIfError(teamsResult);
+  const allScores = throwIfError(scoresResult);
+  const allRooms = throwIfError(roomsResult);
+  const scheduledTeamId = scheduledResult.error
+    ? allScores[0]?.team_id || allRooms[0]?.team_id || null
+    : scheduledResult.data || allScores[0]?.team_id || allRooms[0]?.team_id || null;
 
   return {
     date: scoreDate,
+    teams,
+    scheduledTeam: teams.find((team) => team.id === scheduledTeamId) || null,
+    scores: scheduledTeamId ? allScores.filter((score) => score.team_id === scheduledTeamId) : [],
+    rooms: scheduledTeamId ? allRooms.filter((room) => room.team_id === scheduledTeamId) : []
+  };
+}
+
+export async function loadAdminSummary({ startDate, endDate, teamIds = [] }) {
+  assertClient();
+  const teamsQuery = supabase.from('cs_teams').select('*').eq('active', true).order('sort_order');
+  let scoresQuery = supabase
+    .from('cs_daily_team_scores')
+    .select('score_date, team_id, cleanliness_score, attendance_score, published_at')
+    .gte('score_date', startDate)
+    .lte('score_date', endDate)
+    .not('published_at', 'is', null)
+    .order('score_date');
+
+  if (teamIds.length) scoresQuery = scoresQuery.in('team_id', teamIds);
+
+  const [teamsResult, scoresResult] = await Promise.all([teamsQuery, scoresQuery]);
+  return {
     teams: throwIfError(teamsResult),
     scores: throwIfError(scoresResult),
-    rooms: throwIfError(roomsResult)
+    startDate,
+    endDate
   };
 }
 
