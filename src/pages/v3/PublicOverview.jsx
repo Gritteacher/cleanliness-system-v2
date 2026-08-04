@@ -8,7 +8,8 @@ function thaiDate(value) {
 function statusLabel(status) {
   if (status === 'present') return 'เข้าทำเวร';
   if (status === 'activity') return 'ไปกิจกรรม';
-  return 'ไม่เข้าทำเวร';
+  if (status === 'absent') return 'ไม่เข้าทำเวร';
+  return 'รอข้อมูลเวร';
 }
 
 function displayScore(value) {
@@ -18,9 +19,9 @@ function displayScore(value) {
 export default function PublicOverview({ data, loading, date, onDateChange, onRefresh, navigate }) {
   const [activePhoto, setActivePhoto] = useState(null);
   const dutyTeam = data?.scheduledTeam || null;
-  const score = data?.scores?.find((item) => item.team_id === dutyTeam?.id) || null;
+  const score = data?.score || null;
   const rooms = data?.rooms || [];
-  const combinedScore = score ? Number(score.cleanliness_score || 0) + Number(score.attendance_score || 0) : null;
+  const combinedScore = score?.cleanliness_score == null || score?.attendance_score == null ? null : Number(score.cleanliness_score) + Number(score.attendance_score);
 
   return (
     <div className="page-container public-page">
@@ -28,7 +29,7 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
         <div className="hero-copy">
           <span className="eyebrow"><span className="status-dot" /> ผลเวรประจำวัน</span>
           <h1>{dutyTeam ? <><span>เวรของ</span><br /><em>{dutyTeam.short_name}</em></> : <>เลือกวันที่<br /><em>เพื่อตรวจสอบเวร</em></>}</h1>
-          <p>{dutyTeam ? `ติดตามภาพการดูแลพื้นที่ของ${dutyTeam.name} พร้อมผลประเมินที่ผ่านการตรวจสอบและเผยแพร่แล้ว` : 'ระบบจะแสดงคณะสีและพื้นที่ตามตารางเวรของวันที่เลือก'}</p>
+          <p>{dutyTeam ? `ติดตามข้อมูล รูปภาพ และผลประเมินของ${dutyTeam.name}ที่อัปเดตแบบ Real-time` : 'ระบบจะแสดงคณะสีและพื้นที่ตามตารางเวรของวันที่เลือก'}</p>
           <div className="hero-actions">
             <label className="date-control">
               <Icon name="calendar" />
@@ -41,7 +42,7 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
           <div className="sun-orb" />
           <div className="leaf leaf-one" />
           <div className="leaf leaf-two" />
-          <div className="hero-score"><small>ประจำวันที่</small><strong>{thaiDate(date)}</strong><span>{dutyTeam ? `${dutyTeam.short_name} · ${rooms.length} พื้นที่เผยแพร่แล้ว` : 'ไม่มีคณะเข้าเวรตามตาราง'}</span></div>
+          <div className="hero-score"><small>ประจำวันที่</small><strong>{thaiDate(date)}</strong><span>{dutyTeam ? `${dutyTeam.short_name} · ${rooms.length} พื้นที่ · อัปเดตสด` : 'ไม่มีคณะเข้าเวรตามตาราง'}</span></div>
         </div>
       </section>
 
@@ -66,11 +67,11 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
                 <div className="room-result-body">
                   <div className="room-card-title"><div><span className="area-code">{room.team?.short_name || dutyTeam.short_name}</span><h3>{room.room_label}</h3></div><span className={`status-chip ${room.duty_status}`}>{statusLabel(room.duty_status)}</span></div>
                   <div className="room-score-row"><span><small>ความสะอาด</small><strong>{displayScore(room.cleanliness_score)}</strong></span><span><small>บริหารจัดการ</small><strong>{displayScore(room.attendance_score)}</strong></span><span className="total"><small>รวม</small><strong>{displayScore(roomCombined)}</strong></span></div>
-                  <p>{room.reason_summary || 'ไม่มีหมายเหตุเพิ่มเติม'}</p>
+                  <p>{room.reason_summary || room.note || 'ไม่มีหมายเหตุเพิ่มเติม'}</p>
                 </div>
               </article>;
             })}
-          </div> : <div className="empty-panel"><span className="empty-icon"><Icon name="sparkle" size={28} /></span><h3>ยังไม่มีผลเผยแพร่ในวันนี้</h3><p>คณะเวรถูกกำหนดแล้ว แต่ผู้ดูแลยังไม่ได้เผยแพร่ผลรายพื้นที่</p><button className="button button-text" type="button" onClick={() => navigate('/login')}>เข้าสู่พื้นที่ทำงาน <Icon name="arrow" /></button></div>}
+          </div> : <div className="empty-panel"><span className="empty-icon"><Icon name="sparkle" size={28} /></span><h3>ยังไม่ได้กำหนดพื้นที่</h3><p>ผู้ดูแลระบบสามารถกำหนดพื้นที่รับผิดชอบให้คณะเวรได้ในหน้าจัดการระบบ</p><button className="button button-text" type="button" onClick={() => navigate('/login')}>เข้าสู่พื้นที่ทำงาน <Icon name="arrow" /></button></div>}
         </section>
       </> : <section className="section-block"><div className="empty-panel tall"><span className="empty-icon"><Icon name="calendar" /></span><h2>วันนี้ไม่มีคณะเข้าเวร</h2><p>อาจเป็นวันหยุด วันเสาร์–อาทิตย์ หรือมีการตั้งค่างดเวรสำหรับวันที่เลือก</p></div></section>}
 

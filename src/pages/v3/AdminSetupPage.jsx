@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Icon from '../../components/Icon.jsx';
-import { publishDailyResults, saveArea, saveAreaAssignment, saveDutySchedule, saveSchoolTerm } from '../../services/v3Service.js';
+import { saveArea, saveAreaAssignment, saveDutySchedule, saveSchoolTerm } from '../../services/v3Service.js';
 
 export default function AdminSetupPage({ data, onRefresh, navigate }) {
   const [message, setMessage] = useState('');
@@ -42,16 +42,6 @@ export default function AdminSetupPage({ data, onRefresh, navigate }) {
     setBusy(false);
   }
 
-  async function publishToday() {
-    setBusy(true); setMessage('');
-    try {
-      const result = await publishDailyResults(data.date);
-      setMessage(`เผยแพร่ผลแล้ว ${result.team_count} คณะ · ${result.room_count} พื้นที่ · เตรียมรูปสาธารณะ ${result.photo_count || 0} รูป`);
-      await onRefresh();
-    } catch (error) { setMessage(error.message); }
-    setBusy(false);
-  }
-
   const readiness = [
     { label: 'ภาคเรียนที่เปิดใช้งาน', done: Boolean(data?.term), value: data?.term?.name || 'ยังไม่ได้ตั้งค่า' },
     { label: 'พื้นที่ตรวจความสะอาด', done: Boolean(data?.areas?.length), value: `${data?.areas?.length || 0} พื้นที่` },
@@ -61,7 +51,7 @@ export default function AdminSetupPage({ data, onRefresh, navigate }) {
 
   return (
     <div className="page-container admin-page">
-      <section className="workspace-heading"><div><span className="eyebrow">Admin Console</span><h1>ตั้งค่าระบบ</h1><p>เตรียมข้อมูลหลัก ตรวจงาน และเผยแพร่ผลประจำวัน</p></div><div className="admin-heading-actions"><button className="button button-secondary" onClick={() => navigate('/admin/summary')}><Icon name="chart" /> สรุปผล</button><button className="button button-secondary" onClick={() => navigate('/workspace')}><Icon name="clipboard" /> ดูงานวันนี้</button><button className="button button-primary" onClick={publishToday} disabled={busy || !data?.submissions?.length}><Icon name="sparkle" /> เผยแพร่ผล {data?.date}</button></div></section>
+      <section className="workspace-heading"><div><span className="eyebrow">Admin Console</span><h1>ตั้งค่าระบบ</h1><p>เตรียมข้อมูลหลักและตรวจสอบระบบ Real-time</p></div><div className="admin-heading-actions"><button className="button button-secondary" onClick={() => navigate('/admin/summary')}><Icon name="chart" /> สรุปผล</button><button className="button button-secondary" onClick={() => navigate('/admin/accounts')}><Icon name="user" /> บัญชีผู้ใช้</button><button className="button button-primary" onClick={() => navigate('/workspace')}><Icon name="clipboard" /> แก้ไขข้อมูลรายพื้นที่</button></div></section>
       {message ? <div className="notice-bar">{message}</div> : null}
       <div className="readiness-grid">{readiness.map((item) => <article className={item.done ? 'done' : ''} key={item.label}><span><Icon name={item.done ? 'check' : 'plus'} /></span><div><small>{item.label}</small><strong>{item.value}</strong></div></article>)}</div>
 

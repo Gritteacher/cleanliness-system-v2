@@ -5,7 +5,7 @@ export default function BottomNav({ user, route, navigate }) {
     ? [
         { path: '/', label: 'คะแนน', icon: 'chart' },
         { path: '/workspace', label: 'งานวันนี้', icon: 'clipboard' },
-        ...(user.role === 'admin' ? [{ path: '/admin/summary', label: 'สรุปผล', icon: 'chart' }, { path: '/admin', label: 'จัดการ', icon: 'shield' }] : []),
+        ...(user.role === 'admin' ? [{ path: '/admin/summary', label: 'สรุปผล', icon: 'chart' }, { path: '/admin/accounts', label: 'ผู้ใช้', icon: 'user' }, { path: '/admin', label: 'จัดการ', icon: 'shield' }] : []),
         { path: '/account', label: 'บัญชี', icon: 'user' }
       ]
     : [

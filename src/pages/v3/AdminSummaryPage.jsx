@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Icon from '../../components/Icon.jsx';
-import { bangkokDate, loadAdminSummary } from '../../services/v3Service.js';
+import { bangkokDate, loadAdminSummary, subscribeLiveUpdates } from '../../services/v3Service.js';
 
 const periodModes = [
   { id: 'day', label: 'รายวัน' },
@@ -81,6 +81,7 @@ export default function AdminSummaryPage({ navigate }) {
   const [data, setData] = useState({ teams: [], scores: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [liveTick, setLiveTick] = useState(0);
   const requestId = useRef(0);
   const bounds = reportBounds(mode, day, month, startMonth, endMonth);
 
@@ -91,14 +92,17 @@ export default function AdminSummaryPage({ navigate }) {
       .then((next) => { if (id === requestId.current) setData(next); })
       .catch((loadError) => { if (id === requestId.current) setError(loadError.message); })
       .finally(() => { if (id === requestId.current) setLoading(false); });
-  }, [bounds.startDate, bounds.endDate, selectedTeamIds.join(',')]);
+  }, [bounds.startDate, bounds.endDate, selectedTeamIds.join(','), liveTick]);
+
+  useEffect(() => subscribeLiveUpdates((changedDate) => {
+    if (!changedDate || (changedDate >= bounds.startDate && changedDate <= bounds.endDate)) setLiveTick((value) => value + 1);
+  }), [bounds.startDate, bounds.endDate]);
 
   const reportRows = useMemo(() => {
     const latestByTeamDate = new Map();
     (data.scores || []).forEach((score) => {
       const key = `${score.team_id}:${score.score_date}`;
-      const current = latestByTeamDate.get(key);
-      if (!current || new Date(score.published_at) > new Date(current.published_at)) latestByTeamDate.set(key, score);
+      latestByTeamDate.set(key, score);
     });
     const visibleTeams = selectedTeamIds.length ? data.teams.filter((team) => selectedTeamIds.includes(team.id)) : data.teams;
     return visibleTeams.map((team) => {
@@ -134,7 +138,7 @@ export default function AdminSummaryPage({ navigate }) {
   return (
     <div className="page-container report-page">
       <section className="workspace-heading report-heading">
-        <div><span className="eyebrow">Admin Analytics</span><h1>สรุปผลและจัดอันดับ</h1><p>เปรียบเทียบความสะอาด การบริหารจัดการ และคะแนนรวมตามช่วงเวลาที่ต้องการ</p></div>
+        <div><span className="eyebrow">Admin Analytics · Real-time</span><h1>สรุปผลและจัดอันดับ</h1><p>เปรียบเทียบความสะอาด การบริหารจัดการ และคะแนนรวมจากข้อมูลล่าสุด</p></div>
         <button className="button button-secondary" type="button" onClick={() => navigate('/admin')}><Icon name="shield" /> จัดการระบบ</button>
       </section>
 
@@ -160,7 +164,7 @@ export default function AdminSummaryPage({ navigate }) {
       </section>
 
       {error ? <div className="form-error report-error">{error}</div> : null}
-      {loading ? <div className="loading-panel report-loading">กำลังคำนวณและจัดอันดับ…</div> : !hasScores ? <div className="empty-panel report-empty"><span className="empty-icon"><Icon name="chart" /></span><h2>ยังไม่มีผลเผยแพร่ในช่วงนี้</h2><p>ลองเลือกวัน เดือน ช่วงเดือน หรือคณะสีอื่น</p></div> : <>
+      {loading ? <div className="loading-panel report-loading">กำลังคำนวณและจัดอันดับ…</div> : !hasScores ? <div className="empty-panel report-empty"><span className="empty-icon"><Icon name="chart" /></span><h2>ยังไม่มีคะแนนในช่วงนี้</h2><p>ลองเลือกวัน เดือน ช่วงเดือน หรือคณะสีอื่น</p></div> : <>
         <div className="report-winner-grid">
           {[
             { label: 'อันดับ 1 ความสะอาด', row: cleanlinessRows[0], metric: 'cleanliness', tone: 'green' },
@@ -170,7 +174,7 @@ export default function AdminSummaryPage({ navigate }) {
         </div>
 
         <div className="report-table-grid">
-          <RankingTable title="อันดับความสะอาด" eyebrow="ประเภทที่ 1" rows={cleanlinessRows} metric="cleanliness" accent="var(--green-600)" description="คะแนนเฉลี่ยความสะอาดจากผลที่เผยแพร่แล้ว" />
+          <RankingTable title="อันดับความสะอาด" eyebrow="ประเภทที่ 1" rows={cleanlinessRows} metric="cleanliness" accent="var(--green-600)" description="คะแนนเฉลี่ยความสะอาดจากข้อมูลล่าสุด" />
           <RankingTable title="อันดับการบริหารจัดการ" eyebrow="ประเภทที่ 2" rows={managementRows} metric="management" accent="var(--yellow-500)" description="คะแนนเฉลี่ยที่คำนวณจากจำนวนนักเรียนเข้าเวร" />
           <section className="report-table-card report-total-card">
             <div className="report-card-heading"><div><span className="eyebrow">รวมทั้งสองประเภท</span><h2>อันดับคะแนนรวม</h2></div><p>ความสะอาด + การบริหารจัดการ คะแนนเต็ม 20</p></div>

@@ -21,43 +21,26 @@ export function bangkokDate(date = new Date()) {
 
 export async function loadPublicOverview(scoreDate = bangkokDate()) {
   assertClient();
-  const [teamsResult, scoresResult, roomsResult, scheduledResult] = await Promise.all([
-    supabase.from('cs_teams').select('*').eq('active', true).order('sort_order'),
-    supabase.from('cs_daily_team_scores').select('*, team:cs_teams(*)').eq('score_date', scoreDate).order('total_score', { ascending: false }),
-    supabase.from('cs_published_room_results').select('*, team:cs_teams(*)').eq('score_date', scoreDate).order('room_label'),
-    supabase.rpc('cs_public_scheduled_team', { p_date: scoreDate })
-  ]);
-
-  const teams = throwIfError(teamsResult);
-  const allScores = throwIfError(scoresResult);
-  const allRooms = throwIfError(roomsResult);
-  const scheduledTeamId = scheduledResult.error
-    ? allScores[0]?.team_id || allRooms[0]?.team_id || null
-    : scheduledResult.data || allScores[0]?.team_id || allRooms[0]?.team_id || null;
-
+  const { data, error } = await supabase.rpc('cs_public_live_overview', { p_date: scoreDate });
+  if (error) throw error;
   return {
     date: scoreDate,
-    teams,
-    scheduledTeam: teams.find((team) => team.id === scheduledTeamId) || null,
-    scores: scheduledTeamId ? allScores.filter((score) => score.team_id === scheduledTeamId) : [],
-    rooms: scheduledTeamId ? allRooms.filter((room) => room.team_id === scheduledTeamId) : []
+    scheduledTeam: data?.scheduledTeam || null,
+    score: data?.score || null,
+    rooms: data?.rooms || []
   };
 }
 
 export async function loadAdminSummary({ startDate, endDate, teamIds = [] }) {
   assertClient();
-  const teamsQuery = supabase.from('cs_teams').select('*').eq('active', true).order('sort_order');
-  let scoresQuery = supabase
-    .from('cs_daily_team_scores')
-    .select('score_date, team_id, cleanliness_score, attendance_score, published_at')
-    .gte('score_date', startDate)
-    .lte('score_date', endDate)
-    .not('published_at', 'is', null)
-    .order('score_date');
-
-  if (teamIds.length) scoresQuery = scoresQuery.in('team_id', teamIds);
-
-  const [teamsResult, scoresResult] = await Promise.all([teamsQuery, scoresQuery]);
+  const [teamsResult, scoresResult] = await Promise.all([
+    supabase.from('cs_teams').select('*').eq('active', true).order('sort_order'),
+    supabase.rpc('cs_admin_live_summary', {
+      p_start_date: startDate,
+      p_end_date: endDate,
+      p_team_ids: teamIds.length ? teamIds : null
+    })
+  ]);
   return {
     teams: throwIfError(teamsResult),
     scores: throwIfError(scoresResult),
@@ -83,14 +66,15 @@ export async function loadWorkspace(scoreDate = bangkokDate()) {
   if (failed) throw failed.error;
 
   const submissions = submissionsResult.data || [];
-  const submissionIds = submissions.map((row) => row.id);
-  const evaluationsResult = submissionIds.length
-    ? await supabase.from('cs_evaluations').select('*').in('submission_id', submissionIds).is('deleted_at', null)
-    : { data: [], error: null };
+  const evaluationsResult = await supabase
+    .from('cs_evaluations')
+    .select('*')
+    .eq('duty_date', scoreDate)
+    .is('deleted_at', null);
   if (evaluationsResult.error) throw evaluationsResult.error;
 
   const privatePaths = [...new Set(submissions.flatMap((row) => row.photos || [])
-    .filter((photo) => photo.storage_path && !photo.legacy_public_url)
+    .filter((photo) => photo.storage_path && !photo.public_url && !photo.legacy_public_url)
     .map((photo) => photo.storage_path))];
   const signedByPath = new Map();
   if (privatePaths.length) {
@@ -105,8 +89,8 @@ export async function loadWorkspace(scoreDate = bangkokDate()) {
     ...row,
     photos: (row.photos || []).map((photo) => ({
       ...photo,
-      view_url: photo.legacy_thumbnail_url || photo.legacy_public_url || signedByPath.get(photo.thumbnail_path || photo.storage_path) || signedByPath.get(photo.storage_path) || null,
-      full_url: photo.legacy_public_url || signedByPath.get(photo.storage_path) || null
+      view_url: photo.public_url || photo.legacy_thumbnail_url || photo.legacy_public_url || signedByPath.get(photo.thumbnail_path || photo.storage_path) || signedByPath.get(photo.storage_path) || null,
+      full_url: photo.public_url || photo.legacy_public_url || signedByPath.get(photo.storage_path) || null
     }))
   }));
 
@@ -125,107 +109,81 @@ export async function loadWorkspace(scoreDate = bangkokDate()) {
 
 export async function saveDutySubmission(input) {
   assertClient();
-  const payload = {
-    assignment_id: input.assignmentId,
-    duty_date: input.dutyDate,
-    duty_status: input.dutyStatus,
-    student_count: Number(input.studentCount || 0),
-    note: input.note?.trim() || null,
-    workflow_status: input.submit ? 'submitted' : 'draft'
-  };
+  const { data, error } = await supabase.rpc('cs_save_live_submission', {
+    p_assignment_id: input.assignmentId,
+    p_duty_date: input.dutyDate,
+    p_duty_status: input.dutyStatus,
+    p_student_count: Number(input.studentCount || 0),
+    p_note: input.note?.trim() || null
+  });
+  if (error) throw error;
+  return data;
+}
 
-  const query = input.id
-    ? supabase.from('cs_duty_submissions').update(payload).eq('id', input.id)
-    : supabase.from('cs_duty_submissions').insert(payload);
-  const { data, error } = await query.select().single();
+export async function ensureDutySubmission(assignmentId, dutyDate) {
+  assertClient();
+  const { data, error } = await supabase.rpc('cs_ensure_live_submission', {
+    p_assignment_id: assignmentId,
+    p_duty_date: dutyDate
+  });
   if (error) throw error;
   return data;
 }
 
 export async function saveEvaluation(input) {
   assertClient();
-  const payload = {
-    submission_id: input.submissionId,
-    evaluator_team_id: input.teamId,
-    score: Number(input.score),
-    reason: input.reason?.trim() || null
-  };
-  const query = input.id
-    ? supabase.from('cs_evaluations').update(payload).eq('id', input.id)
-    : supabase.from('cs_evaluations').insert(payload);
-  const { data, error } = await query.select().single();
+  const { data, error } = await supabase.rpc('cs_save_live_evaluation', {
+    p_assignment_id: input.assignmentId,
+    p_duty_date: input.dutyDate,
+    p_evaluator_team_id: input.teamId,
+    p_score: Number(input.score),
+    p_reason: input.reason?.trim() || null
+  });
   if (error) throw error;
   return data;
 }
 
-export async function uploadSubmissionPhoto({ submissionId, userId, file }) {
+export async function deleteEvaluation(evaluationId) {
+  assertClient();
+  const { error } = await supabase.rpc('cs_admin_delete_live_evaluation', { p_evaluation_id: evaluationId });
+  if (error) throw error;
+}
+
+export async function uploadSubmissionPhoto({ submissionId, assignmentId, dutyDate, userId, file }) {
   assertClient();
   if (!file?.type?.startsWith('image/')) throw new Error('กรุณาเลือกไฟล์รูปภาพ');
   if (file.size > 10 * 1024 * 1024) throw new Error('รูปภาพต้องมีขนาดไม่เกิน 10 MB');
+  let activeSubmissionId = submissionId;
+  if (!activeSubmissionId) {
+    const submission = await ensureDutySubmission(assignmentId, dutyDate);
+    activeSubmissionId = submission.id;
+  }
   const safeName = `${Date.now()}-${file.name || 'photo.jpg'}`.replace(/[^a-zA-Z0-9._-]/g, '-');
-  const path = `${submissionId}/${userId}/${safeName}`;
+  const path = `${dutyDate}/${assignmentId}/${userId}/${safeName}`;
   const { error: uploadError } = await supabase.storage
-    .from('cs-duty-photos')
+    .from('cs-published-photos')
     .upload(path, file, { cacheControl: '3600', upsert: false });
   if (uploadError) throw uploadError;
 
+  const publicUrl = supabase.storage.from('cs-published-photos').getPublicUrl(path).data.publicUrl;
+
   const { data, error } = await supabase
     .from('cs_submission_photos')
-    .insert({ submission_id: submissionId, storage_path: path })
+    .insert({ submission_id: activeSubmissionId, storage_path: path, public_url: publicUrl })
     .select()
     .single();
   if (error) {
-    await supabase.storage.from('cs-duty-photos').remove([path]);
+    await supabase.storage.from('cs-published-photos').remove([path]);
     throw error;
   }
   return data;
 }
 
-async function publishPhotoCopies(scoreDate) {
-  const roomsResult = await supabase
-    .from('cs_published_room_results')
-    .select('id, photo_ids, legacy_public_url, legacy_thumbnail_url')
-    .eq('score_date', scoreDate)
-    .not('published_at', 'is', null);
-  if (roomsResult.error) throw roomsResult.error;
-
-  const clearResult = await supabase
-    .from('cs_published_room_results')
-    .update({ photo_public_urls: [] })
-    .eq('score_date', scoreDate)
-    .not('published_at', 'is', null);
-  if (clearResult.error) throw clearResult.error;
-
-  const photoIds = [...new Set((roomsResult.data || []).flatMap((room) => room.photo_ids || []))];
-  if (!photoIds.length) return 0;
-  const photosResult = await supabase
-    .from('cs_submission_photos')
-    .select('id, storage_path, legacy_public_url, legacy_thumbnail_url')
-    .in('id', photoIds)
-    .is('deleted_at', null);
-  if (photosResult.error) throw photosResult.error;
-  const photoById = new Map((photosResult.data || []).map((photo) => [photo.id, photo]));
-
-  let copied = 0;
-  for (const room of roomsResult.data || []) {
-    const photo = (room.photo_ids || []).map((id) => photoById.get(id)).find(Boolean);
-    if (!photo || photo.legacy_public_url) continue;
-    const download = await supabase.storage.from('cs-duty-photos').download(photo.storage_path);
-    if (download.error) throw download.error;
-    const filename = photo.storage_path.split('/').pop() || `${photo.id}.jpg`;
-    const publicPath = `${scoreDate}/${room.id}/${filename}`;
-    const upload = await supabase.storage.from('cs-published-photos').upload(publicPath, download.data, {
-      cacheControl: '31536000',
-      contentType: download.data.type || 'image/jpeg',
-      upsert: true
-    });
-    if (upload.error) throw upload.error;
-    const publicUrl = supabase.storage.from('cs-published-photos').getPublicUrl(publicPath).data.publicUrl;
-    const update = await supabase.from('cs_published_room_results').update({ photo_public_urls: [publicUrl] }).eq('id', room.id);
-    if (update.error) throw update.error;
-    copied += 1;
-  }
-  return copied;
+export async function deleteSubmissionPhoto(photo) {
+  assertClient();
+  const { data: path, error } = await supabase.rpc('cs_delete_live_photo', { p_photo_id: photo.id });
+  if (error) throw error;
+  if (photo.public_url && path) await supabase.storage.from('cs-published-photos').remove([path]);
 }
 
 export async function saveSchoolTerm(input) {
@@ -302,10 +260,20 @@ export async function updateMyDisplayName(displayName) {
   return data;
 }
 
-export async function publishDailyResults(scoreDate) {
+export async function loadAdminAccounts() {
   assertClient();
-  const { data, error } = await supabase.rpc('cs_admin_publish_day', { p_score_date: scoreDate });
+  const { data, error } = await supabase.rpc('cs_admin_accounts');
   if (error) throw error;
-  const photo_count = await publishPhotoCopies(scoreDate);
-  return { ...(data?.[0] || { team_count: 0, room_count: 0 }), photo_count };
+  return data || [];
+}
+
+export function subscribeLiveUpdates(callback, dutyDate = null) {
+  if (!isSupabaseConfigured || !supabase) return () => {};
+  const config = { event: '*', schema: 'public', table: 'cs_live_updates' };
+  if (dutyDate) config.filter = `duty_date=eq.${dutyDate}`;
+  const channel = supabase
+    .channel(`cs-live-${dutyDate || 'all'}-${Math.random().toString(36).slice(2)}`)
+    .on('postgres_changes', config, (payload) => callback(payload.new?.duty_date || payload.old?.duty_date || null))
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
 }
