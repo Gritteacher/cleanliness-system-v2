@@ -53,7 +53,7 @@ export default function App() {
 
   useEffect(() => { const handler = () => setRoute(currentRoute()); window.addEventListener('hashchange', handler); return () => window.removeEventListener('hashchange', handler); }, []);
   useEffect(() => { getCurrentUser().then(setUser).catch(() => setUser(null)).finally(() => setAuthLoading(false)); }, []);
-  useEffect(() => { refreshPublic(); }, [refreshPublic]);
+  useEffect(() => { refreshPublic(); }, [route, refreshPublic]);
   useEffect(() => { if (user) refreshWorkspace(); else setWorkspace(null); }, [user, refreshWorkspace]);
 
   function authenticated(page, adminOnly = false) {
