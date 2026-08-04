@@ -68,6 +68,7 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
             {rooms.map((room) => (
               <article className="result-row" key={room.id}>
                 <span className="result-team" style={{ background: room.team?.accent_color }} />
+                {room.legacy_thumbnail_url || room.legacy_public_url ? <img className="result-thumb" src={room.legacy_thumbnail_url || room.legacy_public_url} alt={`ภาพพื้นที่ ${room.room_label}`} loading="lazy" /> : <span className="result-thumb placeholder">ไม่มีรูป</span>}
                 <div><strong>{room.room_label}</strong><small>{room.team?.short_name || 'ไม่ระบุคณะ'}</small></div>
                 <span className={`status-chip ${room.duty_status}`}>{room.duty_status === 'present' ? 'เข้าทำเวร' : room.duty_status === 'activity' ? 'ไปกิจกรรม' : 'ไม่เข้าทำเวร'}</span>
                 <strong className="result-score">{room.cleanliness_score == null ? '—' : Number(room.cleanliness_score).toFixed(1)}</strong>
