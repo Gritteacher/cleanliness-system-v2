@@ -18,5 +18,10 @@
     "@sparticuz/chromium": "^132.0.0",
     "playwright-core": "^1.49.1"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "engines": {
+    "node": "20.19.5",
+    "npm": "10.8.2"
+  },
+  "packageManager": "npm@10.8.2"
 }
