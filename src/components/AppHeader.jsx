@@ -5,7 +5,7 @@ export default function AppHeader({ user, route, navigate, onLogout }) {
     ? [
         { path: '/', label: 'ผลคะแนน' },
         { path: '/workspace', label: 'พื้นที่ทำงาน' },
-        ...(user.role === 'admin' ? [{ path: '/admin/summary', label: 'สรุปผล' }, { path: '/admin', label: 'จัดการระบบ' }] : []),
+        ...(user.role === 'admin' ? [{ path: '/admin/summary', label: 'สรุปผล' }, { path: '/admin/accounts', label: 'บัญชีผู้ใช้' }, { path: '/admin', label: 'จัดการระบบ' }] : []),
         { path: '/account', label: 'บัญชี' }
       ]
     : [{ path: '/', label: 'ผลคะแนน' }];

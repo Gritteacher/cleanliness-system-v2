@@ -6,8 +6,9 @@ import LoginPage from './pages/v3/LoginPage.jsx';
 import WorkspacePage from './pages/v3/WorkspacePage.jsx';
 import AdminSetupPage from './pages/v3/AdminSetupPage.jsx';
 import AdminSummaryPage from './pages/v3/AdminSummaryPage.jsx';
+import AdminAccountsPage from './pages/v3/AdminAccountsPage.jsx';
 import AccountPage from './pages/v3/AccountPage.jsx';
-import { bangkokDate, loadPublicOverview, loadWorkspace } from './services/v3Service.js';
+import { bangkokDate, loadPublicOverview, loadWorkspace, subscribeLiveUpdates } from './services/v3Service.js';
 import { getCurrentUser, logout } from './utils/auth.js';
 
 function currentRoute() { return window.location.hash.replace('#', '') || '/'; }
@@ -16,7 +17,7 @@ export default function App() {
   const [route, setRoute] = useState(currentRoute());
   const [user, setUser] = useState(null);
   const [date, setDate] = useState(bangkokDate());
-  const [publicData, setPublicData] = useState({ teams: [], scores: [], rooms: [] });
+  const [publicData, setPublicData] = useState({ scheduledTeam: null, score: null, rooms: [] });
   const [workspace, setWorkspace] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [publicLoading, setPublicLoading] = useState(true);
@@ -56,6 +57,17 @@ export default function App() {
   useEffect(() => { getCurrentUser().then(setUser).catch(() => setUser(null)).finally(() => setAuthLoading(false)); }, []);
   useEffect(() => { refreshPublic(); }, [route, refreshPublic]);
   useEffect(() => { if (user) refreshWorkspace(); else setWorkspace(null); }, [user, refreshWorkspace]);
+  useEffect(() => {
+    let timer;
+    const unsubscribe = subscribeLiveUpdates(() => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        refreshPublic();
+        if (user) refreshWorkspace();
+      }, 180);
+    }, date);
+    return () => { window.clearTimeout(timer); unsubscribe(); };
+  }, [date, refreshPublic, refreshWorkspace, user]);
 
   function authenticated(page, adminOnly = false) {
     if (authLoading) return <div className="page-container"><div className="loading-panel">กำลังตรวจสอบสิทธิ์…</div></div>;
@@ -72,6 +84,7 @@ export default function App() {
   if (route === '/login') page = user ? <WorkspacePage user={user} data={workspace} loading={workspaceLoading} date={date} onDateChange={setDate} onRefresh={refreshWorkspace} navigate={navigate} /> : <LoginPage onLogin={handleLogin} navigate={navigate} />;
   else if (route === '/workspace') page = authenticated(<WorkspacePage user={user} data={workspace} loading={workspaceLoading} date={date} onDateChange={setDate} onRefresh={refreshWorkspace} navigate={navigate} />);
   else if (route === '/admin/summary') page = authenticated(<AdminSummaryPage navigate={navigate} />, true);
+  else if (route === '/admin/accounts') page = authenticated(<AdminAccountsPage navigate={navigate} />, true);
   else if (route === '/admin') page = authenticated(<AdminSetupPage data={workspace} onRefresh={refreshWorkspace} navigate={navigate} />, true);
   else if (route === '/account') page = authenticated(<AccountPage user={user} onUpdated={refreshProfile} onLogout={handleLogout} />);
   else page = <PublicOverview data={publicData} loading={publicLoading} date={date} onDateChange={setDate} onRefresh={refreshPublic} navigate={navigate} />;
