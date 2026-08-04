@@ -1,9 +1,7 @@
 [build]
-  command = "npm run build"
+  command = "npm ci --prefer-offline --no-audit --no-fund --progress=false && npm run build"
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "20.19.5"
+  NODE_VERSION = "22.23.2"
   NPM_VERSION = "10.8.2"
-  NPM_FLAGS = "--no-audit --no-fund --loglevel=warn"
-

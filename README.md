@@ -184,3 +184,23 @@ supabase/
 - เพิ่ม `.nvmrc`, `.npmrc` และค่าใน `netlify.toml`
 - ปิด audit, fund และ progress ระหว่างติดตั้งเพื่อลดงานที่ไม่จำเป็น
 - ไม่เปลี่ยนฟังก์ชันการทำงานของระบบหรือฐานข้อมูล
+
+
+## Fix Netlify vite not found
+
+- แก้ `sh: 1: vite: not found`
+- ให้ขั้น Build รัน `npm ci` ซ้ำแบบ `--prefer-offline` ก่อน `npm run build`
+- วิธีนี้ใช้ npm cache จากขั้นติดตั้งครั้งแรก และซ่อม `node_modules` หากการติดตั้งรอบแรกไม่สมบูรณ์
+- ย้ายค่าปิด audit, fund และ progress ไปไว้ใน `.npmrc`
+- เพิ่ม retry และ timeout สำหรับการดาวน์โหลดแพ็กเกจ
+- ไม่เปลี่ยนฟังก์ชันคะแนน ฐานข้อมูล PDF หรืออีเมล
+
+
+## Node 22 Supabase engine fix
+
+- แก้ `EBADENGINE` ของ `@supabase/supabase-js` และ `@supabase/storage-js`
+- เปลี่ยน Netlify build runtime เป็น Node.js `22.23.2`
+- ใช้ npm `10.8.2`
+- คง `vite` และ `@vitejs/plugin-react` ไว้ใน `package.json`
+- ขั้น Build รัน `npm ci` ก่อน `vite build` เพื่อให้ `node_modules` สมบูรณ์
+- ไม่เปลี่ยนฟังก์ชันคะแนน ฐานข้อมูล PDF หรืออีเมล
