@@ -346,7 +346,7 @@ export default function AdminSummary({ data }) {
         <div className="section-title">
           <div>
             <h3>1. ตารางสรุปคะแนนความสะอาด</h3>
-            <p>เรียงลำดับจากคะแนนมากไปน้อย เฉลี่ยตามช่วงวันที่เลือก เต็ม 10 คะแนน</p>
+            <p>เรียงลำดับจากคะแนนมากไปน้อย เฉลี่ยตามช่วงวันที่เลือก เต็ม 10 คะแนน • รอคะแนนจริงนับเฉพาะห้องที่สถานะมาทำเวรและคะแนนยังไม่ครบ 5 สี</p>
           </div>
         </div>
         <div className="responsive-table">
@@ -358,7 +358,7 @@ export default function AdminSummary({ data }) {
                 <th>จำนวนวัน</th>
                 <th>คะแนนความสะอาด /10</th>
                 <th>ห้องสมบูรณ์รวม</th>
-                <th>รอคะแนนรวม</th>
+                <th>รอคะแนนจริง</th>
               </tr>
             </thead>
             <tbody>

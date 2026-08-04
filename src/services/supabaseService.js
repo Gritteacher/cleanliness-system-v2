@@ -246,6 +246,22 @@ export async function upsertCleanScore(score) {
   return scoreFromRow(data);
 }
 
+export async function upsertCleanScores(scores = []) {
+  assertSupabase();
+
+  if (!scores.length) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('clean_scores')
+    .upsert(scores.map(scoreToRow), { onConflict: 'id' })
+    .select();
+
+  if (error) throw error;
+  return (data || []).map(scoreFromRow);
+}
+
 export async function upsertAreas(areas) {
   assertSupabase();
   const { error } = await supabase
@@ -261,6 +277,21 @@ export async function insertEditLog(log) {
   const { error } = await supabase
     .from('edit_logs')
     .insert(logToRow(log));
+
+  if (error) throw error;
+  return true;
+}
+
+export async function insertEditLogs(logs = []) {
+  assertSupabase();
+
+  if (!logs.length) {
+    return true;
+  }
+
+  const { error } = await supabase
+    .from('edit_logs')
+    .insert(logs.map(logToRow));
 
   if (error) throw error;
   return true;

@@ -186,9 +186,17 @@ export function calculateTeamSummary(data, recordDate, teamId) {
     eligibleRooms: eligibleRooms.length,
     activityRooms: roomSummaries.filter((item) => item.isActivity).length,
     completeRooms: completeCount,
-    waitingRooms: eligibleRooms.filter((item) => item.scoreCount < colorTeams.length).length,
+    // นับ "รอคะแนน" เฉพาะห้องที่ยืนยันว่ามาทำเวรแล้ว
+    // ห้องที่ยังไม่มีข้อมูล, ไม่มาทำเวร หรือไปกิจกรรม ไม่ควรถูกแสดงว่ารอคะแนน
+    waitingRooms: eligibleRooms.filter((item) =>
+      item.record?.status === 'PRESENT' &&
+      item.scoreCount < colorTeams.length
+    ).length,
     missingRecords: eligibleRooms.filter((item) => !item.record).length,
-    fullScoreRooms: eligibleRooms.filter((item) => item.scoreCount >= colorTeams.length).length,
+    fullScoreRooms: eligibleRooms.filter((item) =>
+      item.record?.status === 'PRESENT' &&
+      item.scoreCount >= colorTeams.length
+    ).length,
     roomScore,
     cleanScore,
     studentScore,
@@ -211,8 +219,16 @@ export function getOverallStats(data, recordDate) {
     bestTeam: summaries[0],
     highestScore: summaries[0]?.totalScore || 0,
     completeRooms: rooms.filter((room) => room.complete).length,
-    waitingRooms: rooms.filter((room) => !room.isActivity && room.scoreCount < colorTeams.length).length,
+    waitingRooms: rooms.filter((room) =>
+      !room.isActivity &&
+      room.record?.status === 'PRESENT' &&
+      room.scoreCount < colorTeams.length
+    ).length,
     missingRecords: rooms.filter((room) => !room.isActivity && !room.record).length,
-    fullScoreRooms: rooms.filter((room) => !room.isActivity && room.scoreCount >= colorTeams.length).length
+    fullScoreRooms: rooms.filter((room) =>
+      !room.isActivity &&
+      room.record?.status === 'PRESENT' &&
+      room.scoreCount >= colorTeams.length
+    ).length
   };
 }
