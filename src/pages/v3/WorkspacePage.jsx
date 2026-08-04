@@ -23,10 +23,11 @@ export default function WorkspacePage({ user, data, loading, date, onDateChange,
   async function submitDuty(event, assignment) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const shouldSubmit = event.nativeEvent.submitter?.value === 'submit';
     const existing = submissions.find((row) => row.assignment_id === assignment.id);
     setBusyId(assignment.id); setNotice('');
     try {
-      await saveDutySubmission({ id: existing?.id, assignmentId: assignment.id, dutyDate: date, dutyStatus: form.get('status'), studentCount: form.get('studentCount'), note: form.get('note'), submit: form.get('action') === 'submit' });
+      await saveDutySubmission({ id: existing?.id, assignmentId: assignment.id, dutyDate: date, dutyStatus: form.get('status'), studentCount: form.get('studentCount'), note: form.get('note'), submit: shouldSubmit });
       setNotice('บันทึกข้อมูลการทำเวรแล้ว'); await onRefresh();
     } catch (error) { setNotice(error.message); }
     setBusyId('');
