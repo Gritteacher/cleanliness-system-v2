@@ -22,12 +22,26 @@ function SaveState({ value }) {
   return <span className={`autosave-state ${value}`}>{value === 'saved' ? <Icon name="check" size={13} /> : null}{labels[value]}</span>;
 }
 
+function AreaIdentity({ assignment }) {
+  return <div className="area-identity">
+    <span className="area-code">{assignment.area?.code}</span>
+    <h3><small>ห้อง</small>{assignment.room_label}</h3>
+    <p><strong>พื้นที่</strong>{assignment.area?.name || 'ยังไม่ระบุพื้นที่'}</p>
+  </div>;
+}
+
 function EvaluationEditor({ assignment, date, teamId, existing, admin, onChanged }) {
   const [score, setScore] = useState(existing?.score ?? '');
   const [reason, setReason] = useState(existing?.reason || '');
   const [touched, setTouched] = useState(false);
   const [saveState, setSaveState] = useState('idle');
   const version = useRef(0);
+
+  useEffect(() => {
+    if (touched) return;
+    setScore(existing?.score ?? '');
+    setReason(existing?.reason || '');
+  }, [existing?.id, existing?.reason, existing?.score, existing?.updated_at]);
 
   useEffect(() => {
     if (!touched) return undefined;
@@ -44,7 +58,7 @@ function EvaluationEditor({ assignment, date, teamId, existing, admin, onChanged
         if (currentVersion === version.current) {
           setSaveState('saved');
           setTouched(false);
-          onChanged?.();
+          onChanged?.({ background: true });
         }
       } catch {
         if (currentVersion === version.current) setSaveState('error');
@@ -58,7 +72,7 @@ function EvaluationEditor({ assignment, date, teamId, existing, admin, onChanged
     setSaveState('saving');
     try {
       await deleteEvaluation(existing.id);
-      setScore(''); setReason(''); setTouched(false); setSaveState('saved'); onChanged?.();
+      setScore(''); setReason(''); setTouched(false); setSaveState('saved'); onChanged?.({ background: true });
     } catch { setSaveState('error'); }
   }
 
@@ -74,7 +88,7 @@ function EvaluationEditor({ assignment, date, teamId, existing, admin, onChanged
   </div>;
 }
 
-function DutyAreaCard({ assignment, current, date, user, teams, evaluations, editable, admin, onChanged }) {
+function DutyAreaCard({ assignment, current, date, user, teams, evaluations, editable, admin, ownerEvaluation, ownerScoreEditable, onChanged }) {
   const [form, setForm] = useState({
     status: current?.duty_status || 'present',
     studentCount: current?.student_count ?? 0,
@@ -83,7 +97,23 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
   const [dirty, setDirty] = useState(false);
   const [saveState, setSaveState] = useState('idle');
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [uploadItems, setUploadItems] = useState([]);
   const version = useRef(0);
+  const previewUrls = useRef(new Set());
+
+  useEffect(() => {
+    if (dirty) return;
+    setForm({
+      status: current?.duty_status || 'present',
+      studentCount: current?.student_count ?? 0,
+      note: current?.note || ''
+    });
+  }, [current?.duty_status, current?.id, current?.note, current?.student_count, current?.updated_at]);
+
+  useEffect(() => () => {
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls.current.clear();
+  }, []);
 
   useEffect(() => {
     if (!dirty || !editable) return undefined;
@@ -99,7 +129,7 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
           note: form.note
         });
         if (currentVersion === version.current) {
-          setDirty(false); setSaveState('saved'); onChanged?.();
+          setDirty(false); setSaveState('saved'); onChanged?.({ background: true });
         }
       } catch {
         if (currentVersion === version.current) setSaveState('error');
@@ -117,39 +147,57 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
     setDirty(true);
   }
 
-  async function uploadPhoto(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  async function uploadPhotos(event) {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    const queued = files.map((file, index) => {
+      const previewUrl = URL.createObjectURL(file);
+      previewUrls.current.add(previewUrl);
+      return { id: `${Date.now()}-${index}-${file.name}`, file, previewUrl, status: 'queued', error: '' };
+    });
+    setUploadItems((previous) => [...previous.filter((item) => item.status === 'error'), ...queued]);
     setPhotoBusy(true);
-    try {
-      await uploadSubmissionPhoto({
-        submissionId: current?.id,
-        assignmentId: assignment.id,
-        dutyDate: date,
-        userId: user.id,
-        file
-      });
-      await onChanged?.();
-    } catch (error) { window.alert(error.message); }
     event.target.value = '';
+    for (const item of queued) {
+      setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'uploading' } : row));
+      try {
+        await uploadSubmissionPhoto({
+          submissionId: current?.id,
+          assignmentId: assignment.id,
+          dutyDate: date,
+          userId: user.id,
+          file: item.file
+        });
+        setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'saved' } : row));
+      } catch (error) {
+        setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'error', error: error.message } : row));
+      }
+    }
+    await onChanged?.({ background: true });
+    setUploadItems((previous) => {
+      previous.filter((item) => item.status !== 'error').forEach((item) => {
+        previewUrls.current.delete(item.previewUrl);
+        URL.revokeObjectURL(item.previewUrl);
+      });
+      return previous.filter((item) => item.status === 'error');
+    });
     setPhotoBusy(false);
   }
 
   async function removePhoto(photo) {
     if (!window.confirm('ยืนยันการลบรูปภาพนี้หรือไม่')) return;
     setPhotoBusy(true);
-    try { await deleteSubmissionPhoto(photo); await onChanged?.(); }
+    try { await deleteSubmissionPhoto(photo); await onChanged?.({ background: true }); }
     catch (error) { window.alert(error.message); }
     setPhotoBusy(false);
   }
 
   return <article className="task-card live-task-card">
     <div className="task-card-head">
-      <span className="area-code">{assignment.area?.code}</span>
+      <span />
       <SaveState value={saveState} />
     </div>
-    <h3>{assignment.room_label}</h3>
-    <p>{assignment.area?.name}</p>
+    <AreaIdentity assignment={assignment} />
     <div className="field-row">
       <label>สถานะ
         <select value={form.status} disabled={!editable} onChange={(event) => update('status', event.target.value)}>
@@ -168,9 +216,21 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
       <div className="task-photo-list">{(current?.photos || []).map((photo) => <span className="editable-photo" key={photo.id}>
         <a href={photo.full_url || photo.view_url} target="_blank" rel="noreferrer"><img src={photo.view_url || photo.full_url} alt={`รูป ${assignment.room_label}`} /></a>
         {editable ? <button type="button" onClick={() => removePhoto(photo)} aria-label="ลบรูป">×</button> : null}
+      </span>)}{uploadItems.map((item) => <span className={`upload-preview ${item.status}`} key={item.id} title={item.error || item.file.name}>
+        <img src={item.previewUrl} alt={`ตัวอย่าง ${item.file.name}`} />
+        <small>{item.status === 'error' ? 'ไม่สำเร็จ' : item.status === 'saved' ? 'เสร็จแล้ว' : 'กำลังส่ง'}</small>
       </span>)}</div>
-      {editable ? <label className="photo-upload-button">{photoBusy ? 'กำลังอัปโหลด…' : 'เพิ่มรูปภาพ'}<input type="file" accept="image/*" capture="environment" onChange={uploadPhoto} disabled={photoBusy} /></label> : <small>ปิดการแก้ไขแล้ว</small>}
+      {editable ? <div className="photo-upload-actions">
+        <label className="photo-upload-button"><Icon name="image" size={16} /> เลือกรูปจากเครื่อง<input type="file" accept="image/*" multiple aria-label="เลือกรูปจากเครื่อง" onChange={uploadPhotos} disabled={photoBusy} /></label>
+        <label className="photo-upload-button camera"><Icon name="camera" size={16} /> ถ่ายรูป<input type="file" accept="image/*" capture="environment" aria-label="ถ่ายรูป" onChange={uploadPhotos} disabled={photoBusy} /></label>
+        {photoBusy ? <small>กำลังอัปโหลดทีละรูป…</small> : null}
+      </div> : <small>ปิดการแก้ไขแล้ว</small>}
     </div>
+
+    {!admin ? <div className="owner-score-panel">
+      <div className="admin-score-heading"><strong>คะแนนความสะอาดของคณะคุณ</strong><small>{ownerScoreEditable ? 'บันทึกอัตโนมัติ' : 'ปิดการแก้ไขแล้ว'}</small></div>
+      {ownerScoreEditable ? <EvaluationEditor assignment={assignment} date={date} teamId={user.teamId} existing={ownerEvaluation} onChanged={onChanged} /> : <div className="closed-score"><strong>{ownerEvaluation?.score ?? '—'}</strong><small>คะแนนย้อนหลัง</small></div>}
+    </div> : null}
 
     {admin ? <div className="admin-score-panel">
       <div className="admin-score-heading"><strong>คะแนนความสะอาดรายคณะ</strong><small>แก้ไขแล้วบันทึกอัตโนมัติ</small></div>
@@ -224,16 +284,18 @@ export default function WorkspacePage({ user, data, loading, date, onDateChange,
             evaluations={evaluations}
             editable={ownerCanEdit}
             admin={isAdmin}
+            ownerEvaluation={evaluations.find((row) => row.assignment_id === assignment.id && row.evaluator_team_id === user.teamId)}
+            ownerScoreEditable={isToday && user.teamId === teamId}
             onChanged={onRefresh}
           />)}</div> : <div className="empty-panel compact"><h3>ยังไม่ได้กำหนดพื้นที่ให้คณะนี้</h3><p>ผู้ดูแลระบบสามารถเพิ่มพื้นที่ได้ในหน้าจัดการระบบ</p></div>}
     </section>
 
-    {!isAdmin ? <section className="workspace-section">
+    {!isAdmin && user.teamId !== teamId ? <section className="workspace-section">
       <div className="section-heading"><div><span className="eyebrow">ร่วมประเมินแบบ Real-time</span><h2>ประเมินความสะอาดประจำวัน</h2></div><span className="count-badge">{assignments.length} พื้นที่</span></div>
       {!teamId ? <div className="empty-panel compact"><p>ไม่มีพื้นที่ประเมินในวันที่เลือก</p></div> : assignments.length ? <div className="evaluation-list">{assignments.map((assignment) => {
         const existing = evaluations.find((row) => row.assignment_id === assignment.id && row.evaluator_team_id === user.teamId);
         return <article className="evaluation-card live-evaluation-card" key={`${date}-${assignment.id}`}>
-          <div><span className="area-code">{assignment.area?.code}</span><h3>{assignment.room_label}</h3><p>{assignment.team?.short_name}</p></div>
+          <AreaIdentity assignment={assignment} />
           {isToday ? <EvaluationEditor assignment={assignment} date={date} teamId={user.teamId} existing={existing} onChanged={onRefresh} /> : <div className="closed-score"><strong>{existing?.score ?? '—'}</strong><small>ปิดการแก้ไขแล้ว</small></div>}
         </article>;
       })}</div> : <div className="empty-panel compact"><p>ยังไม่ได้กำหนดพื้นที่สำหรับคณะเวรนี้</p></div>}

@@ -28,9 +28,11 @@ export default function App() {
 
   const navigate = useCallback((path) => { window.location.hash = path; setRoute(path); window.scrollTo({ top: 0, behavior: 'smooth' }); }, []);
 
-  const refreshPublic = useCallback(async () => {
+  const refreshPublic = useCallback(async (options = {}) => {
+    const background = options?.background === true;
     const requestId = ++publicRequestId.current;
-    setPublicLoading(true); setError('');
+    if (!background) setPublicLoading(true);
+    setError('');
     try {
       const next = await loadPublicOverview(date);
       if (requestId === publicRequestId.current) setPublicData(next);
@@ -40,10 +42,12 @@ export default function App() {
     if (requestId === publicRequestId.current) setPublicLoading(false);
   }, [date]);
 
-  const refreshWorkspace = useCallback(async () => {
+  const refreshWorkspace = useCallback(async (options = {}) => {
     if (!user) return;
+    const background = options?.background === true;
     const requestId = ++workspaceRequestId.current;
-    setWorkspaceLoading(true); setError('');
+    if (!background) setWorkspaceLoading(true);
+    setError('');
     try {
       const next = await loadWorkspace(date);
       if (requestId === workspaceRequestId.current) setWorkspace(next);
@@ -62,8 +66,8 @@ export default function App() {
     const unsubscribe = subscribeLiveUpdates(() => {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        refreshPublic();
-        if (user) refreshWorkspace();
+        refreshPublic({ background: true });
+        if (user) refreshWorkspace({ background: true });
       }, 180);
     }, date);
     return () => { window.clearTimeout(timer); unsubscribe(); };
