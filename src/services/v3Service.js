@@ -253,6 +253,51 @@ export async function saveDutySchedule(input) {
   return data;
 }
 
+export async function loadHolidays(termId) {
+  assertClient();
+  if (!termId) return [];
+  const { data, error } = await supabase
+    .from('cs_schedule_overrides')
+    .select('*')
+    .eq('term_id', termId)
+    .eq('cancelled', true)
+    .order('duty_date');
+  if (error) throw error;
+  return data || [];
+}
+
+export async function saveHoliday(input) {
+  assertClient();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) throw new Error('กรุณาเข้าสู่ระบบอีกครั้ง');
+
+  const { data, error } = await supabase
+    .from('cs_schedule_overrides')
+    .upsert({
+      term_id: input.termId,
+      duty_date: input.dutyDate,
+      team_id: null,
+      cancelled: true,
+      reason: input.reason?.trim() || 'วันหยุด',
+      created_by: authData.user.id
+    }, { onConflict: 'term_id,duty_date' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteHoliday(holidayId) {
+  assertClient();
+  const { error } = await supabase
+    .from('cs_schedule_overrides')
+    .delete()
+    .eq('id', holidayId)
+    .eq('cancelled', true);
+  if (error) throw error;
+}
+
 export async function updateMyDisplayName(displayName) {
   assertClient();
   const { data, error } = await supabase.rpc('cs_update_my_profile', { p_display_name: displayName });
@@ -274,6 +319,20 @@ export function subscribeLiveUpdates(callback, dutyDate = null) {
   const channel = supabase
     .channel(`cs-live-${dutyDate || 'all'}-${Math.random().toString(36).slice(2)}`)
     .on('postgres_changes', config, (payload) => callback(payload.new?.duty_date || payload.old?.duty_date || null))
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
+export function subscribeScheduleOverrides(callback, termId) {
+  if (!isSupabaseConfigured || !supabase || !termId) return () => {};
+  const channel = supabase
+    .channel(`cs-overrides-${termId}-${Math.random().toString(36).slice(2)}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'cs_schedule_overrides',
+      filter: `term_id=eq.${termId}`
+    }, callback)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
 }
