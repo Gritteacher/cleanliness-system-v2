@@ -1,10 +1,44 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Icon from '../../components/Icon.jsx';
-import { saveArea, saveAreaAssignment, saveDutySchedule, saveSchoolTerm } from '../../services/v3Service.js';
+import {
+  bangkokDate,
+  deleteHoliday,
+  loadHolidays,
+  saveArea,
+  saveAreaAssignment,
+  saveDutySchedule,
+  saveHoliday,
+  saveSchoolTerm,
+  subscribeScheduleOverrides
+} from '../../services/v3Service.js';
+
+function thaiHolidayDate(value) {
+  return new Intl.DateTimeFormat('th-TH', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Bangkok'
+  }).format(new Date(`${value}T12:00:00+07:00`));
+}
 
 export default function AdminSetupPage({ data, onRefresh, navigate }) {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [holidays, setHolidays] = useState([]);
+  const [holidaysLoading, setHolidaysLoading] = useState(false);
+  const [holidayBusy, setHolidayBusy] = useState(false);
+
+  const refreshHolidays = useCallback(async () => {
+    if (!data?.term?.id) { setHolidays([]); return; }
+    setHolidaysLoading(true);
+    try {
+      setHolidays(await loadHolidays(data.term.id));
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setHolidaysLoading(false);
+    }
+  }, [data?.term?.id]);
+
+  useEffect(() => { refreshHolidays(); }, [refreshHolidays]);
+  useEffect(() => subscribeScheduleOverrides(refreshHolidays, data?.term?.id), [data?.term?.id, refreshHolidays]);
 
   async function submitTerm(event) {
     event.preventDefault(); const form = new FormData(event.currentTarget); setBusy(true); setMessage('');
@@ -42,12 +76,47 @@ export default function AdminSetupPage({ data, onRefresh, navigate }) {
     setBusy(false);
   }
 
+  async function submitHoliday(event) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const dutyDate = String(form.get('dutyDate') || '');
+    if (!data?.term) return;
+    if (dutyDate < data.term.start_date || dutyDate > data.term.end_date) {
+      setMessage('วันที่ต้องอยู่ภายในช่วงภาคเรียนที่เปิดใช้งาน');
+      return;
+    }
+    setHolidayBusy(true); setMessage('');
+    try {
+      await saveHoliday({ termId: data.term.id, dutyDate, reason: form.get('reason') });
+      formElement.reset();
+      setMessage('กำหนดวันหยุดแล้ว ระบบจะไม่นำวันนี้ไปคำนวณคะแนน');
+      await Promise.all([refreshHolidays(), onRefresh({ background: true })]);
+    } catch (error) { setMessage(error.message); }
+    setHolidayBusy(false);
+  }
+
+  async function removeHoliday(holiday) {
+    if (!window.confirm(`ยกเลิกวันหยุด ${thaiHolidayDate(holiday.duty_date)} หรือไม่\nข้อมูลคะแนนเดิมของวันนี้จะกลับมาใช้คำนวณตามปกติ`)) return;
+    setHolidayBusy(true); setMessage('');
+    try {
+      await deleteHoliday(holiday.id);
+      setMessage('ยกเลิกวันหยุดแล้ว วันนี้กลับเข้าสู่ตารางเวรตามปกติ');
+      await Promise.all([refreshHolidays(), onRefresh({ background: true })]);
+    } catch (error) { setMessage(error.message); }
+    setHolidayBusy(false);
+  }
+
   const readiness = [
     { label: 'ภาคเรียนที่เปิดใช้งาน', done: Boolean(data?.term), value: data?.term?.name || 'ยังไม่ได้ตั้งค่า' },
     { label: 'พื้นที่ตรวจความสะอาด', done: Boolean(data?.areas?.length), value: `${data?.areas?.length || 0} พื้นที่` },
     { label: 'การจับคู่คณะกับพื้นที่', done: Boolean(data?.assignments?.length), value: `${data?.assignments?.length || 0} รายการ` },
     { label: 'ตารางเวร จ.–ศ.', done: data?.schedules?.length === 5, value: `${data?.schedules?.length || 0}/5 วัน` }
   ];
+  const today = bangkokDate();
+  const holidayDefaultDate = data?.term
+    ? (today < data.term.start_date ? data.term.start_date : today > data.term.end_date ? data.term.end_date : today)
+    : today;
 
   return (
     <div className="page-container admin-page">
@@ -94,6 +163,32 @@ export default function AdminSetupPage({ data, onRefresh, navigate }) {
           <div className="schedule-list">{[1,2,3,4,5].map((weekday) => { const row = data?.schedules?.find((item) => item.weekday === weekday); return <div key={weekday}><strong>{['จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์'][weekday - 1]}</strong>{row ? <span><i style={{ background: row.team?.accent_color }} />{row.team?.short_name}</span> : <small>ยังไม่กำหนด</small>}</div>; })}</div>
         </section>
       </div>
+
+      <section className="settings-card holiday-settings-card">
+        <div className="card-title"><span className="summary-icon yellow"><Icon name="calendar" /></span><div><h2>วันหยุดและงดเวร</h2><p>วันที่กำหนดไว้จะไม่มีคณะเข้าเวรและไม่นำคะแนนไปคำนวณ โดยข้อมูลเดิมจะไม่ถูกลบ</p></div></div>
+        {!data?.term ? <div className="mini-empty">กรุณาตั้งค่าภาคเรียนก่อน</div> : <div className="holiday-settings-layout">
+          <form className="settings-form holiday-form" onSubmit={submitHoliday}>
+            <label>วันที่หยุด
+              <input name="dutyDate" type="date" min={data.term.start_date} max={data.term.end_date} defaultValue={holidayDefaultDate} required />
+            </label>
+            <label>ชื่อวันหยุดหรือหมายเหตุ <small>(ไม่บังคับ)</small>
+              <input name="reason" maxLength="500" placeholder="เช่น วันหยุดราชการ" />
+            </label>
+            <div className="holiday-form-note"><Icon name="shield" size={17} /><span>คะแนนและรูปภาพที่มีอยู่จะถูกเก็บไว้ และจะกลับมาใช้เมื่อยกเลิกวันหยุด</span></div>
+            <button className="button button-primary" disabled={holidayBusy}>กำหนดเป็นวันหยุด</button>
+          </form>
+          <div className="holiday-list-panel">
+            <div className="holiday-list-heading"><div><strong>วันหยุดในภาคเรียนนี้</strong><small>{data.term.name}</small></div><span>{holidays.length} วัน</span></div>
+            <div className="holiday-list">
+              {holidaysLoading ? <div className="mini-empty">กำลังโหลดวันหยุด…</div> : holidays.length ? holidays.map((holiday) => <div className="holiday-row" key={holiday.id}>
+                <span className="holiday-date-mark"><strong>{new Date(`${holiday.duty_date}T12:00:00+07:00`).getDate()}</strong><small>{new Intl.DateTimeFormat('th-TH', { month: 'short', timeZone: 'Asia/Bangkok' }).format(new Date(`${holiday.duty_date}T12:00:00+07:00`))}</small></span>
+                <div><strong>{holiday.reason}</strong><small>{thaiHolidayDate(holiday.duty_date)}</small></div>
+                <button className="button button-danger button-compact" type="button" disabled={holidayBusy} onClick={() => removeHoliday(holiday)}>ยกเลิกวันหยุด</button>
+              </div>) : <div className="mini-empty holiday-empty">ยังไม่มีวันหยุดในภาคเรียนนี้</div>}
+            </div>
+          </div>
+        </div>}
+      </section>
 
       <section className="next-step-card"><span className="brand-mark"><Icon name="sparkle" /></span><div><h3>พร้อมเปิดใช้งานเมื่อ checklist ครบ</h3><p>ประธานคณะจะเห็นพื้นที่ของเวรในวันนั้น และส่งข้อมูลให้ทุกคณะร่วมประเมินได้ทันที</p></div><span className="soon-badge">V3 Foundation</span></section>
     </div>
