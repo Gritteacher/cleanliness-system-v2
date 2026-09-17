@@ -28,6 +28,12 @@ function formatScore(value) {
   return value == null ? '—' : Number(value).toFixed(2);
 }
 
+function combinedDailyScore(score) {
+  return score.cleanliness_score == null || score.attendance_score == null
+    ? null
+    : Number(score.cleanliness_score) + Number(score.attendance_score);
+}
+
 function averageScore(rows, key) {
   const values = rows.map((row) => row[key]).filter((value) => value != null).map(Number);
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
@@ -109,10 +115,10 @@ function TeamScoreDrawer({ team, summary, scores, periodLabel, focusMetric, onCl
       </div>
 
       <div className="team-score-table-wrap">
-        {dailyScores.length ? <table className="team-score-table">
+        {dailyScores.length ? <><table className="team-score-table">
           <thead><tr><th>วันที่</th><th>ความสะอาด /10</th><th>การบริหารจัดการ /10</th><th>รวม /20</th></tr></thead>
           <tbody>{dailyScores.map((score) => {
-            const total = score.cleanliness_score == null || score.attendance_score == null ? null : Number(score.cleanliness_score) + Number(score.attendance_score);
+            const total = combinedDailyScore(score);
             return <tr key={score.score_date}>
               <td><strong>{thaiDate(score.score_date, { weekday: 'short', day: 'numeric', month: 'short' })}</strong><small>{thaiDate(score.score_date, { year: 'numeric' })}</small></td>
               <td>{formatScore(score.cleanliness_score)}</td>
@@ -120,7 +126,16 @@ function TeamScoreDrawer({ team, summary, scores, periodLabel, focusMetric, onCl
               <td><strong>{formatScore(total)}</strong></td>
             </tr>;
           })}</tbody>
-        </table> : <div className="team-score-empty"><span className="empty-icon"><Icon name="calendar" /></span><h3>ไม่มีคะแนนในช่วงนี้</h3><p>ลองเปลี่ยนวันที่หรือช่วงเดือนในหน้าสรุปผล</p></div>}
+        </table><div className="team-score-mobile-list">
+          {dailyScores.map((score) => <article className="daily-score-card" key={score.score_date}>
+            <header><div><strong>{thaiDate(score.score_date, { weekday: 'long', day: 'numeric', month: 'short' })}</strong><small>{thaiDate(score.score_date, { year: 'numeric' })}</small></div><span>คะแนนรายวัน</span></header>
+            <div className="daily-score-values">
+              <div className="daily-score-value cleanliness"><small>สะอาด</small><strong>{formatScore(score.cleanliness_score)}</strong><i>/10</i></div>
+              <div className="daily-score-value management"><small>จัดการ</small><strong>{formatScore(score.attendance_score)}</strong><i>/10</i></div>
+              <div className="daily-score-value total"><small>รวม</small><strong>{formatScore(combinedDailyScore(score))}</strong><i>/20</i></div>
+            </div>
+          </article>)}
+        </div></> : <div className="team-score-empty"><span className="empty-icon"><Icon name="calendar" /></span><h3>ไม่มีคะแนนในช่วงนี้</h3><p>ลองเปลี่ยนวันที่หรือช่วงเดือนในหน้าสรุปผล</p></div>}
       </div>
     </section>
   </div>;
