@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import AdminSummaryExportDialog from '../../components/AdminSummaryExportDialog.jsx';
 import Icon from '../../components/Icon.jsx';
 import { bangkokDate, loadAdminSummary, subscribeLiveUpdates } from '../../services/v3Service.js';
+import { downloadAdminSummaryExcel } from '../../utils/adminSummaryExcel.js';
 
 const periodModes = [
   { id: 'day', label: 'รายวัน' },
@@ -22,6 +24,21 @@ function reportBounds(mode, day, month, startMonth, endMonth) {
 
 function thaiDate(value, options = { dateStyle: 'long' }) {
   return new Intl.DateTimeFormat('th-TH', { ...options, timeZone: 'Asia/Bangkok' }).format(new Date(`${value}T12:00:00+07:00`));
+}
+
+function periodLabelFor(config) {
+  if (config.mode === 'day') return thaiDate(config.day);
+  if (config.mode === 'month') return thaiDate(`${config.month}-01`, { month: 'long', year: 'numeric' });
+  return `${thaiDate(`${config.startMonth}-01`, { month: 'short', year: 'numeric' })} – ${thaiDate(monthBounds(config.endMonth).endDate, { month: 'short', year: 'numeric' })}`;
+}
+
+function exportFileName(config) {
+  const period = config.mode === 'day'
+    ? config.day
+    : config.mode === 'month'
+      ? config.month
+      : `${config.startMonth}_to_${config.endMonth}`;
+  return `cleanliness-report_${period}.xlsx`;
 }
 
 function formatScore(value) {
@@ -155,6 +172,7 @@ export default function AdminSummaryPage({ navigate }) {
   const [error, setError] = useState('');
   const [liveTick, setLiveTick] = useState(0);
   const [teamDetail, setTeamDetail] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const requestId = useRef(0);
   const bounds = reportBounds(mode, day, month, startMonth, endMonth);
 
@@ -215,11 +233,27 @@ export default function AdminSummaryPage({ navigate }) {
     setTeamDetail({ teamId, focusMetric });
   }
 
+  async function exportExcel(config) {
+    const exportBounds = reportBounds(config.mode, config.day, config.month, config.startMonth, config.endMonth);
+    const snapshot = await loadAdminSummary({ ...exportBounds, teamIds: config.teamIds });
+    const selectedTeams = snapshot.teams.filter((team) => config.teamIds.includes(team.id));
+    await downloadAdminSummaryExcel({
+      ...config,
+      teams: selectedTeams,
+      scores: snapshot.scores,
+      periodLabel: periodLabelFor(config),
+      fileName: exportFileName(config)
+    });
+  }
+
   return (
     <div className="page-container report-page">
       <section className="workspace-heading report-heading">
         <div><span className="eyebrow">Admin Analytics · Real-time</span><h1>สรุปผลและจัดอันดับ</h1><p>เปรียบเทียบความสะอาด การบริหารจัดการ และคะแนนรวมจากข้อมูลล่าสุด</p></div>
-        <button className="button button-secondary" type="button" onClick={() => navigate('/admin')}><Icon name="shield" /> จัดการระบบ</button>
+        <div className="report-heading-actions">
+          <button className="button button-primary" type="button" disabled={loading || !data.teams.length} onClick={() => setExportOpen(true)}><Icon name="download" /> ส่งออก Excel</button>
+          <button className="button button-secondary" type="button" onClick={() => navigate('/admin')}><Icon name="shield" /> จัดการระบบ</button>
+        </div>
       </section>
 
       <section className="report-filter-panel">
@@ -272,6 +306,13 @@ export default function AdminSummaryPage({ navigate }) {
         </div>
       </>}
       <TeamScoreDrawer team={detailTeam} summary={detailSummary} scores={data.scores || []} periodLabel={periodLabel} focusMetric={teamDetail?.focusMetric || 'total'} onClose={() => setTeamDetail(null)} />
+      {exportOpen ? <AdminSummaryExportDialog
+        initialPeriod={{ mode, day, month, startMonth, endMonth }}
+        initialTeamIds={selectedTeamIds.length ? selectedTeamIds : data.teams.map((team) => team.id)}
+        teams={data.teams}
+        onClose={() => setExportOpen(false)}
+        onExport={exportExcel}
+      /> : null}
     </div>
   );
 }
