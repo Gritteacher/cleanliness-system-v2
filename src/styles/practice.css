@@ -1,0 +1,88 @@
+.system-home { padding-block: 64px; }
+.system-home > h1 { max-width: 800px; margin-bottom: 12px; font-size: clamp(30px, 4vw, 48px); }
+.system-home > p { color: var(--muted); }
+.system-choice-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; margin-top: 34px; }
+.system-choice { display: flex; flex-direction: column; align-items: start; min-width: 0; min-height: 350px; padding: 36px; border: 1px solid var(--line); border-radius: 28px; text-align: left; box-shadow: var(--shadow-sm); transition: transform .2s, box-shadow .2s; }
+.system-choice:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.system-choice:focus-visible, .practice-page a:focus-visible { outline: 3px solid var(--yellow-500); outline-offset: 4px; }
+.cleanliness-choice { background: var(--green-900); color: white; }
+.practice-choice { background: var(--yellow-100); color: var(--green-900); }
+.system-choice-number { font-size: 12px; opacity: .8; }
+.system-choice h2 { margin: 24px 0 16px; font-size: clamp(23px,2.4vw,30px); }
+.system-choice p { margin-bottom: 28px; opacity: .85; }
+.system-choice-action { margin-top: auto; padding-top: 20px; border-top: 1px solid currentColor; font-weight: 500; }
+.practice-page { max-width: 1180px; padding-bottom: 40px; }
+.practice-back { padding: 0; border: 0; color: var(--green-700); background: none; }
+.practice-page-heading { margin-block: 28px; }
+.practice-page-heading h1 { margin-bottom: 12px; font-size: clamp(28px,3.6vw,42px); }
+.practice-page-heading p { color: var(--muted); }
+.practice-date-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; padding: 24px; border: 1px solid var(--line); border-radius: 22px; background: white; }
+.practice-date-panel label { display: grid; gap: 6px; font-size: 13px; }
+.practice-date-panel input { min-height: 46px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); color: var(--ink); }
+.practice-date-panel > div > strong, .practice-date-panel > div > span { display: block; }
+.practice-date-panel > div > span { margin-top: 3px; color: var(--muted); }
+.practice-completion { margin-left: auto; text-align: right; }
+.practice-completion strong { font-size: 30px; color: var(--green-700); }
+.practice-team-jumps { display: flex; flex-wrap: wrap; gap: 10px; padding-block: 22px; }
+.practice-team-jumps a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: white; text-decoration: none; font-size: 14px; }
+.practice-team-jumps i { width: 10px; height: 10px; border-radius: 50%; background: var(--team); }
+.practice-team-list { display: grid; gap: 28px; }
+.practice-team-card { min-width: 0; scroll-margin-top: 90px; overflow: hidden; border: 1px solid var(--line); border-top: 5px solid var(--team); border-radius: 24px; background: white; box-shadow: var(--shadow-sm); }
+.practice-team-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding: 22px 26px; background: var(--team-soft); }
+.practice-team-header > div { display: flex; gap: 14px; align-items: center; min-width: 0; }
+.practice-team-header i { width: 10px; height: 54px; flex: 0 0 auto; border-radius: 9px; background: var(--team); }
+.practice-team-header h2 { margin: 2px 0 0; font-size: 25px; }
+.practice-team-header small { color: var(--muted); }
+.practice-team-status { padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.8); font-size: 13px; }
+.practice-team-status.done { color: var(--green-800); background: var(--green-100); }
+.practice-team-body { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+.practice-history, .practice-form { min-width: 0; padding: 26px; }
+.practice-history > h3, .practice-form h3 { margin-bottom: 18px; font-size: 18px; }
+.practice-form { border-left: 1px solid var(--line); }
+.practice-form fieldset { min-width: 0; padding: 0; border: 0; margin: 0; display: grid; gap: 16px; }
+.practice-form fieldset:disabled { opacity: .6; }
+.practice-form label:not(.button):not(.practice-confirm) { display: grid; gap: 6px; font-size: 14px; }
+.practice-form label > span[aria-hidden] { display: none; }
+.practice-form input:not([type=checkbox]):not([type=radio]):not([type=file]), .practice-form textarea { width: 100%; min-width: 0; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--canvas); font-size: 16px; line-height: 1.75; }
+.practice-form textarea { resize: vertical; }
+.practice-form input:focus-visible, .practice-form textarea:focus-visible { outline: 2px solid var(--green-600); outline-offset: 2px; }
+.practice-outcome-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.practice-outcome-options label { display: flex !important; align-items: center; padding: 8px 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.practice-outcome-options label.selected { background: var(--green-50); border-color: var(--green-600); }
+.practice-form input[type=checkbox], .practice-form input[type=radio] { flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--green-700); }
+.practice-upload-heading strong, .practice-upload-heading small { display: block; }
+.practice-upload-heading small { margin-top: 3px; font-size: 12px; color: var(--muted); }
+.practice-upload-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.practice-upload-actions .button { position: relative; overflow: hidden; cursor: pointer; font-size: 14px; }
+.practice-upload-actions input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.practice-upload-actions .button:focus-within { outline: 2px solid var(--green-600); }
+.practice-photo-previews { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.practice-photo-previews > div { position: relative; }
+.practice-photo-previews img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 12px; }
+.practice-photo-previews button { position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: white; color: var(--danger); }
+.practice-confirm { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.75; }
+.practice-confirm input { margin-top: 4px; }
+.practice-submit { width: 100%; font-size: 15px; }
+.practice-success { padding: 12px; border-radius: 10px; color: var(--green-800); background: var(--green-50); overflow-wrap: anywhere; }
+.practice-no-report { padding: 28px 16px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); text-align: center; }
+.practice-sent-report { padding-block: 16px 22px; border-bottom: 1px solid var(--line); }
+.practice-sent-report:first-of-type { padding-top: 0; }
+.practice-sent-report > header { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 10px; }
+.practice-sent-report header strong, .practice-sent-report header small { display: block; overflow-wrap: anywhere; }
+.practice-sent-report header small { margin-top: 3px; color: var(--muted); font-size: 12px; }
+.practice-outcome { padding: 4px 10px; border-radius: 999px; background: var(--green-50); color: var(--green-700); font-size: 12px; }
+.practice-outcome.incident { background: var(--yellow-100); color: #76570e; }
+.practice-report-details { white-space: pre-wrap; overflow-wrap: anywhere; margin: 16px 0; line-height: 1.8; }
+.practice-report-images { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.practice-report-images button { min-width: 0; padding: 0; border: 0; border-radius: 13px; overflow: hidden; background: var(--surface-soft); }
+.practice-report-images img { width: 100%; aspect-ratio: 4/3; display: block; object-fit: cover; }
+.practice-reference { display: block; margin-top: 12px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.practice-summary-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: white; }
+.practice-summary-filters label { display: grid; gap: 5px; }.practice-summary-filters input,.practice-summary-filters select { min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); color: var(--ink); }
+.practice-summary-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 14px; margin-block: 24px; }.practice-summary-cards article { padding: 18px; border: 1px solid var(--line); border-top-width: 4px; border-radius: 16px; background: white; }.practice-summary-cards h2 { font-size: 18px; }.practice-summary-cards strong { font-size: 25px; }.practice-summary-cards p,.practice-summary-cards small { font-size: 13px; color: var(--muted); }
+.practice-summary-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 20px; }.practice-summary-table { padding: 10px; border: 1px solid var(--line); border-radius: 18px; background: white; }.practice-summary-table td:last-child { min-width: 250px; max-width: 500px; white-space: normal; overflow-wrap: anywhere; }.practice-summary-table p { white-space: pre-wrap; }
+@media (max-width: 760px) {
+  .system-home { padding-top: 32px; }.system-choice-grid { grid-template-columns: 1fr; gap: 18px; }.system-choice { padding: 26px; min-height: 300px; }
+  .practice-date-panel { padding: 18px; gap: 16px; }.practice-date-panel label { width: 100%; }.practice-date-panel > div:not(.practice-completion) { flex: 1; font-size: 14px; }.practice-completion strong { font-size: 24px; }.practice-completion span { font-size: 12px; }
+  .practice-team-body { grid-template-columns: 1fr; }.practice-history, .practice-form { padding: 20px 16px; }.practice-form { border-left: 0; border-top: 1px solid var(--line); }.practice-team-header { padding: 18px 16px; }.practice-team-header h2 { font-size: 23px; }.practice-team-status { font-size: 12px; }.practice-team-jumps { gap: 7px; }.practice-team-jumps a { padding: 7px 11px; font-size: 13px; }
+}

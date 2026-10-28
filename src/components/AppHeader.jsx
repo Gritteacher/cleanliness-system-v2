@@ -3,12 +3,13 @@ import Icon from './Icon.jsx';
 export default function AppHeader({ user, route, navigate, onLogout }) {
   const links = user
     ? [
-        { path: '/', label: 'ผลคะแนน' },
+        { path: '/', label: 'เลือกระบบ' },
+        { path: '/cleanliness', label: 'ผลคะแนน' },
         { path: '/workspace', label: 'พื้นที่ทำงาน' },
         ...(user.role === 'admin' ? [{ path: '/admin/summary', label: 'สรุปผล' }, { path: '/admin/accounts', label: 'บัญชีผู้ใช้' }, { path: '/admin', label: 'จัดการระบบ' }] : []),
         { path: '/account', label: 'บัญชี' }
       ]
-    : [{ path: '/', label: 'ผลคะแนน' }];
+    : [{ path: '/', label: 'เลือกระบบ' }, { path: '/cleanliness', label: 'ความสะอาด' }, { path: '/practice', label: 'เวรฝึกซ้อม' }];
 
   return (
     <header className="topbar">
@@ -37,7 +38,7 @@ export default function AppHeader({ user, route, navigate, onLogout }) {
             </button>
             <button className="icon-button" type="button" onClick={onLogout} aria-label="ออกจากระบบ"><Icon name="logout" /></button>
           </>
-        ) : (
+        ) : route.startsWith('/practice') ? null : (
           <button className="button button-primary button-compact" type="button" onClick={() => navigate('/login')}>
             <Icon name="login" size={18} /> เข้าสู่ระบบ
           </button>
