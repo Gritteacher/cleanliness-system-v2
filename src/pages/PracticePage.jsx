@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Icon from '../components/Icon.jsx';
 import { bangkokDate } from '../services/v3Service.js';
 import { loadPracticeReports, sendPracticeReport, watchPracticeReports } from '../services/practiceService.js';
 import { compressSubmissionPhoto } from '../utils/photoCompression.js';
@@ -49,14 +50,14 @@ function TeamForm({ team, draft, update, date, enabled, onSent, lock, unlock }) 
     finally { update({ busy: false }); unlock(); }
   }
   return <form className="practice-form" onSubmit={submit}>
-    <h3>รายงานเวรคณะ{team.name}</h3>
+    <h3><Icon name="clipboard" size={18} /> กรอกข้อมูลการปฏิบัติเวร</h3>
     <fieldset disabled={!enabled || draft.busy || draft.preparing}>
       <label>ชื่อ–นามสกุลครูผู้ปฏิบัติเวร <span aria-hidden="true">*</span><input required maxLength={120} autoComplete="name" value={draft.name} placeholder="กรอกชื่อครูผู้ปฏิบัติเวร" onInput={e => update({ name: e.target.value })} /></label>
       <div className="practice-outcome-options" role="group" aria-label="ผลการดูแล">{[['normal', 'ปกติ'], ['incident', 'มีเหตุการณ์']].map(([value, label]) => <label key={value} className={draft.outcome === value ? 'selected' : ''}><input type="radio" name={`outcome-${team.id}`} checked={draft.outcome === value} onChange={() => update({ outcome: value })} />{label}</label>)}</div>
       <label>รายละเอียดการดูแลหรือเหตุการณ์ <span aria-hidden="true">*</span><textarea required maxLength={3000} rows={3} value={draft.details} onInput={e => update({ details: e.target.value })} placeholder="บันทึกการฝึกซ้อมและเหตุการณ์ที่พบ" /></label>
       {draft.outcome === 'incident' && <label>การดำเนินการ <span aria-hidden="true">*</span><textarea required maxLength={2000} rows={2} value={draft.action} onInput={e => update({ action: e.target.value })} placeholder="การดูแลหรือแก้ไขเหตุการณ์" /></label>}
       <div className="practice-upload-heading"><strong>ภาพการปฏิบัติเวร *</strong><small>{draft.photos.length}/6 ภาพ · ต้นฉบับไม่เกิน 10 MB ต่อภาพ</small></div>
-      <div className="practice-upload-actions"><label className="button button-secondary">ถ่ายภาพ<input aria-label={`ถ่ายภาพ ${team.color}`} type="file" accept="image/*" capture="environment" onChange={addPhotos} /></label><label className="button button-secondary">แนบภาพ<input aria-label={`แนบภาพ ${team.color}`} type="file" accept="image/*" multiple onChange={addPhotos} /></label></div>
+      <div className="practice-upload-actions"><label className="button button-secondary"><Icon name="camera" size={18} /> ถ่ายภาพ<input aria-label={`ถ่ายภาพ ${team.color}`} type="file" accept="image/*" capture="environment" onChange={addPhotos} /></label><label className="button button-secondary"><Icon name="image" size={18} /> แนบภาพ<input aria-label={`แนบภาพ ${team.color}`} type="file" accept="image/*" multiple onChange={addPhotos} /></label></div>
       <div className="practice-photo-previews">{draft.photos.map(photo => <div key={photo.key}><img src={photo.preview} alt="ภาพที่เตรียมส่ง" /><button type="button" aria-label="ลบภาพที่เตรียมส่ง" onClick={() => { URL.revokeObjectURL(photo.preview); update({ photos: draft.photos.filter(p => p.key !== photo.key) }); }}>×</button></div>)}</div>
       <label className="practice-confirm"><input required type="checkbox" checked={draft.confirmed} onChange={e => update({ confirmed: e.target.checked })} /><span>ข้าพเจ้ายืนยันว่าข้อมูลและรูปภาพที่รายงานถูกต้อง</span></label>
       <button className="button button-primary practice-submit" disabled={!draft.confirmed || !draft.photos.length} type="submit">ส่งรายงานคณะสีนี้</button>
@@ -67,7 +68,7 @@ function TeamForm({ team, draft, update, date, enabled, onSent, lock, unlock }) 
   </form>;
 }
 
-export default function PracticePage({ navigate }) {
+export default function PracticePage({ navigate, isAdmin = false }) {
   const [date, setDate] = useState(() => practiceDefaultDate(bangkokDate()));
   const [reports, setReports] = useState([]), [loading, setLoading] = useState(true), [error, setError] = useState('');
   const [drafts, setDrafts] = useState({}), [active, setActive] = useState(0), [photo, setPhoto] = useState(null);
@@ -91,17 +92,18 @@ export default function PracticePage({ navigate }) {
   useEffect(() => { setDrafts(old => { const next = { ...old }; for (const team of PRACTICE_TEAMS) next[`${date}-${team.id}`] ||= newDraft(); return next; }); }, [date]);
   const complete = new Set(reports.map(r => r.team_id)).size;
   return <section className="page-container practice-page">
-    <button type="button" className="practice-back" onClick={() => navigate('/')}>← เลือกระบบ</button>
-    <header className="practice-page-heading"><span className="eyebrow">COLOR TEAM · DUTY REPORT</span><h1>รายงานเวรดูแลนักเรียน<br />ฝึกซ้อมกิจกรรมคณะสี</h1><p>2–30 พฤศจิกายน 2569 · เลื่อนกรอกข้อมูลในการ์ดคณะสีของท่าน</p></header>
+    <div className="practice-toolbar"><button type="button" className="practice-back" onClick={() => navigate('/')}>← เลือกระบบ</button>{isAdmin && <button type="button" className="practice-admin-link" onClick={() => navigate('/practice/summary')}><Icon name="chart" size={16} /> สรุปรายงานเวรฝึกซ้อม</button>}</div>
+    <header className="practice-page-heading practice-report-hero"><span className="eyebrow">COLOR TEAM · DUTY REPORT</span><h1>รายงานเวรดูแลนักเรียน<span>ฝึกซ้อมกิจกรรมคณะสี</span></h1><p><Icon name="calendar" size={16} /> 2–30 พฤศจิกายน 2569</p><small>เลือกวันที่ แล้วเลื่อนกรอกข้อมูลในการ์ดคณะสีของท่าน</small></header>
     <div className="practice-date-panel"><label>วันที่ปฏิบัติเวร<input aria-label="วันที่ปฏิบัติเวรฝึกซ้อม" type="date" min={PRACTICE_START} max={PRACTICE_END} value={date} disabled={active > 0} onInput={e => { if (e.target.value >= PRACTICE_START && e.target.value <= PRACTICE_END) setDate(e.target.value); }} /></label><div><strong>{practiceDateLabel(date)}</strong><span>{schedule.label}</span></div><div className="practice-completion"><strong>{schedule.enabled ? `${complete}/5` : 'งดซ้อม'}</strong><span>{schedule.enabled ? 'คณะสีรายงานแล้ว' : 'ไม่ต้องส่งรายงาน'}</span></div></div>
     {error && <div className="global-error" role="alert">{error} <button type="button" onClick={() => refresh()}>ลองอีกครั้ง</button></div>}
-    <nav className="practice-team-jumps" aria-label="ไปยังคณะสี">{PRACTICE_TEAMS.map(team => <a href={`#practice-${team.id}`} key={team.id} style={{ '--team': team.accent }} onClick={e => { e.preventDefault(); document.getElementById(`practice-${team.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}><i />{team.color}</a>)}</nav>
+    <nav className="practice-team-jumps" aria-label="ไปยังคณะสี">{PRACTICE_TEAMS.map(team => <a href="#/practice" key={team.id} style={{ '--team': team.accent }} onClick={e => { e.preventDefault(); document.getElementById(`practice-${team.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}><i />{team.color}</a>)}</nav>
     <div className="practice-team-list">{PRACTICE_TEAMS.map(team => {
       const key = `${date}-${team.id}`, draft = drafts[key], teamReports = reports.filter(r => r.team_id === team.id);
       return <article key={team.id} id={`practice-${team.id}`} className="practice-team-card" style={{ '--team': team.accent, '--team-soft': team.soft }}>
         <header className="practice-team-header"><div><i /><div><small>{team.color}</small><h2>คณะ{team.name}</h2></div></div><span className={`practice-team-status ${teamReports.length ? 'done' : ''}`}>{!schedule.enabled ? 'งดซ้อม' : loading ? 'กำลังโหลด…' : error ? 'ยังตรวจสอบไม่ได้' : teamReports.length ? `รายงานแล้ว ${teamReports.length} รายการ` : 'ยังไม่รายงาน'}</span></header>
-        <div className="practice-team-body"><section className="practice-history" aria-label={`รายงาน ${team.color}`}><h3>รายงานประจำวันที่เลือก</h3>{loading ? <p>กำลังโหลดรายงาน…</p> : teamReports.length ? teamReports.map(report => <Report key={report.id} report={report} onPhoto={setPhoto} />) : <div className="practice-no-report">{schedule.enabled ? 'ยังไม่มีรายงานของคณะสีนี้' : schedule.label}</div>}</section>
+        <div className="practice-team-body">
           {draft && <TeamForm team={team} date={date} draft={draft} enabled={schedule.enabled} update={patch => setDrafts(old => ({ ...old, [key]: { ...old[key], ...patch } }))} lock={() => setActive(v => v + 1)} unlock={() => setActive(v => Math.max(0, v - 1))} onSent={report => { setReports(old => [report, ...old.filter(r => r.id !== report.id)].sort((a, b) => b.created_at.localeCompare(a.created_at))); }} />}
+          <section className="practice-history" aria-label={`รายงาน ${team.color}`}><h3><Icon name="image" size={18} /> รายงานที่ส่งแล้ว</h3>{loading ? <p>กำลังโหลดรายงาน…</p> : teamReports.length ? teamReports.map(report => <Report key={report.id} report={report} onPhoto={setPhoto} />) : <div className="practice-no-report">{schedule.enabled ? 'ยังไม่มีรายงานของคณะสีนี้' : schedule.label}</div>}</section>
         </div>
       </article>;
     })}</div>

@@ -89,7 +89,7 @@ export default function App() {
 
   let page;
   if (route === '/') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main><SystemHome navigate={navigate} /></main></div>;
-  if (route === '/practice') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main>{user?.role === 'admin' && <div className="page-container"><button type="button" className="button button-secondary" onClick={() => navigate('/practice/summary')}>สรุปรายงานเวรฝึกซ้อม</button></div>}<PracticePage navigate={navigate} /></main><footer><strong>Clean & Care</strong><span>โรงเรียนเทพศิรินทร์ นนทบุรี</span></footer></div>;
+  if (route === '/practice') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main><PracticePage navigate={navigate} isAdmin={user?.role === 'admin'} /></main><footer><strong>Clean & Care</strong><span>โรงเรียนเทพศิรินทร์ นนทบุรี</span></footer></div>;
   if (route === '/practice/summary') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main>{authenticated(<PracticeSummary navigate={navigate} />, true)}</main></div>;
   if (route === '/login') page = user ? <WorkspacePage user={user} data={workspace} loading={workspaceLoading} date={date} onDateChange={setDate} onRefresh={refreshWorkspace} navigate={navigate} /> : <LoginPage onLogin={handleLogin} navigate={navigate} />;
   else if (route === '/workspace') page = authenticated(<WorkspacePage user={user} data={workspace} loading={workspaceLoading} date={date} onDateChange={setDate} onRefresh={refreshWorkspace} navigate={navigate} />);
