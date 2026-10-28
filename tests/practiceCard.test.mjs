@@ -1,0 +1,12 @@
+import { before, after, test } from 'node:test';
+import assert from 'node:assert/strict';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { createServer } from 'vite';
+let server, Card;
+before(async()=>{server=await createServer({server:{middlewareMode:true},appType:'custom'});Card=(await server.ssrLoadModule('/src/components/PracticeReportCard.jsx')).default;});
+after(async()=>{await server?.close();});
+const report={id:'sample',created_at:'2026-11-02T12:00:00Z',teacher_name:'ครูหนึ่ง',teacher_names:['ครูหนึ่ง','ครูสอง','ครูสาม'],outcome:'normal',details:'รายละเอียดการดูแลตัวอย่าง',action_taken:'',photos:[{full:'one.full.webp',thumbnail:'one.thumb.webp'},{full:'two.full.webp',thumbnail:'two.thumb.webp'}]};
+test('photo comes before all teachers and report details',()=>{const html=renderToStaticMarkup(React.createElement(Card,{report,onPhoto:()=>{}}));assert.ok(html.indexOf('practice-report-cover')<html.indexOf('ครูหนึ่ง</li>'));assert.ok(html.indexOf('ครูสาม</li>')<html.indexOf('รายละเอียดการดูแลตัวอย่าง'));assert.equal((html.match(/<li>/g)||[]).length,3);assert.ok(html.includes('เลือกภาพที่ 2'));});
+test('old single-teacher card remains valid',()=>{const html=renderToStaticMarkup(React.createElement(Card,{report:{...report,teacher_names:null},onPhoto:()=>{}}));assert.equal((html.match(/<li>/g)||[]).length,1);assert.ok(html.includes('ครูหนึ่ง</li>'));});
+test('unreported color shows image placeholder',()=>{const html=renderToStaticMarkup(React.createElement(Card,{onPhoto:()=>{}}));assert.ok(html.includes('ยังไม่มีรูปภาพ'));assert.ok(html.includes('รอข้อมูลเวร'));assert.ok(!html.includes('undefined'));});

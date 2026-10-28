@@ -95,3 +95,25 @@
   .practice-team-body { grid-template-columns: minmax(0,1fr); }.practice-history, .practice-form { padding: 20px 16px; }.practice-history > h3, .practice-form h3 { margin-bottom: 16px; font-size: 16px; }.practice-form { border-right: 0; border-bottom: 1px solid var(--line); }.practice-history { background: #FAFBF8; }.practice-form fieldset { gap: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .system-choice { transition: none; }.system-choice:hover { transform: none; } }
+
+/* Photo-first report cards, matching the cleanliness room cards. */
+.practice-photo-card-layout { grid-template-columns: minmax(0,1fr); }
+.practice-photo-card-layout > .practice-history { padding: 0; background: white; }
+.practice-photo-card-layout > .practice-form { order: 0; border: 0; border-top: 1px solid var(--line); }
+.practice-reports-loading { padding: 22px; margin: 0; color: var(--muted); }
+.practice-report-card { overflow: hidden; border-bottom: 1px solid var(--line); background: white; }.practice-report-card:last-child { border-bottom: 0; }
+.practice-report-cover { position: relative; display: block; width: 100%; aspect-ratio: 4/3; overflow: hidden; margin: 0; padding: 0; border: 0; border-bottom: 1px solid var(--line); background: var(--surface-soft); color: var(--ink); }
+.practice-report-cover > img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center top; }
+.practice-cover-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--muted); font-size: 14px; }.practice-report-cover > .practice-cover-placeholder { height: 100%; }
+.practice-cover-empty-icon { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 20px; color: var(--green-800); background: var(--yellow-100); }
+.practice-cover-count, .practice-cover-expand { position: absolute; bottom: 14px; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 99px; color: white; background: rgba(24,61,42,.82); font-size: 12px; }.practice-cover-count { left: 14px; }.practice-cover-expand { right: 14px; }
+.practice-report-thumbs { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 7px; padding: 12px 16px 0; }.practice-report-thumbs button { min-width: 0; padding: 2px; overflow: hidden; border: 2px solid transparent; border-radius: 9px; background: var(--surface-soft); }.practice-report-thumbs button.active { border-color: var(--green-700); }.practice-report-thumbs img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 5px; }
+.practice-report-card-body { padding: 22px; }.practice-report-card-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }.practice-teacher-label { display: flex; align-items: center; gap: 6px; color: var(--green-700); font-size: 13px; }
+.practice-teacher-names { display: grid; gap: 5px; list-style: none; margin: 0; padding: 0; }.practice-teacher-names li { color: var(--ink); font-size: 20px; font-weight: 500; line-height: 1.6; overflow-wrap: anywhere; }
+.practice-report-description { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }.practice-report-description small { display: block; color: var(--muted); font-size: 12px; }.practice-report-description p { margin: 5px 0 14px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); font-size: 15px; line-height: 1.8; }
+.practice-report-card-time { display: flex; align-items: center; gap: 6px; margin-top: 16px; color: var(--muted); font-size: 12px; }.practice-report-awaiting { margin: 0; color: var(--muted); font-size: 15px; }
+.practice-teacher-fields { display: grid; gap: 12px; }.practice-teacher-fields-heading strong { display: block; font-size: 14px; font-weight: 400; }.practice-teacher-fields-heading small { color: var(--muted); font-size: 12px; }.practice-teacher-fields > label { display: grid; gap: 6px; font-size: 13px; font-weight: 400; }
+.practice-add-teacher { min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 12px; border: 1px dashed var(--green-600); border-radius: 10px; background: var(--green-50); color: var(--green-800); font-size: 13px; }
+@media (min-width: 901px) { .practice-team-list { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; } }
+@media (max-width: 760px) { .practice-report-card-body { padding: 20px 16px; }.practice-teacher-names li { font-size: 19px; }.practice-report-thumbs { gap: 5px; padding-inline: 12px; } }
+@media (max-width: 480px) { .practice-report-thumbs { grid-template-columns: repeat(3,minmax(0,1fr)); } }
