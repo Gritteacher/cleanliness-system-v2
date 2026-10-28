@@ -8,6 +8,9 @@ import AdminSetupPage from './pages/v3/AdminSetupPage.jsx';
 import AdminSummaryPage from './pages/v3/AdminSummaryPage.jsx';
 import AdminAccountsPage from './pages/v3/AdminAccountsPage.jsx';
 import AccountPage from './pages/v3/AccountPage.jsx';
+import SystemHome from './pages/SystemHome.jsx';
+import PracticePage from './pages/PracticePage.jsx';
+import PracticeSummary from './pages/PracticeSummary.jsx';
 import { bangkokDate, loadPublicOverview, loadWorkspace, subscribeLiveUpdates } from './services/v3Service.js';
 import { getCurrentUser, logout } from './utils/auth.js';
 
@@ -59,7 +62,7 @@ export default function App() {
 
   useEffect(() => { const handler = () => setRoute(currentRoute()); window.addEventListener('hashchange', handler); return () => window.removeEventListener('hashchange', handler); }, []);
   useEffect(() => { getCurrentUser().then(setUser).catch(() => setUser(null)).finally(() => setAuthLoading(false)); }, []);
-  useEffect(() => { refreshPublic(); }, [route, refreshPublic]);
+  useEffect(() => { if (route === '/cleanliness') refreshPublic(); }, [route, refreshPublic]);
   useEffect(() => { if (user) refreshWorkspace(); else setWorkspace(null); }, [user, refreshWorkspace]);
   useEffect(() => {
     let timer;
@@ -85,6 +88,9 @@ export default function App() {
   function handleLogin(next) { setWorkspaceLoading(true); setUser(next); navigate('/workspace'); }
 
   let page;
+  if (route === '/') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main><SystemHome navigate={navigate} /></main></div>;
+  if (route === '/practice') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main>{user?.role === 'admin' && <div className="page-container"><button type="button" className="button button-secondary" onClick={() => navigate('/practice/summary')}>สรุปรายงานเวรฝึกซ้อม</button></div>}<PracticePage navigate={navigate} /></main><footer><strong>Clean & Care</strong><span>โรงเรียนเทพศิรินทร์ นนทบุรี</span></footer></div>;
+  if (route === '/practice/summary') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main>{authenticated(<PracticeSummary navigate={navigate} />, true)}</main></div>;
   if (route === '/login') page = user ? <WorkspacePage user={user} data={workspace} loading={workspaceLoading} date={date} onDateChange={setDate} onRefresh={refreshWorkspace} navigate={navigate} /> : <LoginPage onLogin={handleLogin} navigate={navigate} />;
   else if (route === '/workspace') page = authenticated(<WorkspacePage user={user} data={workspace} loading={workspaceLoading} date={date} onDateChange={setDate} onRefresh={refreshWorkspace} navigate={navigate} />);
   else if (route === '/admin/summary') page = authenticated(<AdminSummaryPage navigate={navigate} />, true);

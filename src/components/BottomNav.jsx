@@ -3,13 +3,15 @@ import Icon from './Icon.jsx';
 export default function BottomNav({ user, route, navigate }) {
   const items = user
     ? [
-        { path: '/', label: 'คะแนน', icon: 'chart' },
+        { path: '/cleanliness', label: 'คะแนน', icon: 'chart' },
         { path: '/workspace', label: 'งานวันนี้', icon: 'clipboard' },
         ...(user.role === 'admin' ? [{ path: '/admin/summary', label: 'สรุปผล', icon: 'chart' }, { path: '/admin/accounts', label: 'ผู้ใช้', icon: 'user' }, { path: '/admin', label: 'จัดการ', icon: 'shield' }] : []),
         { path: '/account', label: 'บัญชี', icon: 'user' }
       ]
     : [
-        { path: '/', label: 'คะแนน', icon: 'chart' },
+        { path: '/', label: 'เลือกระบบ', icon: 'clipboard' },
+        { path: '/cleanliness', label: 'คะแนน', icon: 'chart' },
+        { path: '/practice', label: 'เวรฝึกซ้อม', icon: 'clipboard' },
         { path: '/login', label: 'เข้าสู่ระบบ', icon: 'login' }
       ];
 

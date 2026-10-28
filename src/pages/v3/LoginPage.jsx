@@ -25,7 +25,7 @@ export default function LoginPage({ onLogin, navigate }) {
       </section>
       <section className="auth-card-wrap">
         <form className="auth-card" onSubmit={submit}>
-          <button className="back-link" type="button" onClick={() => navigate('/')}><span>←</span> กลับหน้าผลคะแนน</button>
+          <button className="back-link" type="button" onClick={() => navigate('/cleanliness')}><span>←</span> กลับหน้าผลคะแนน</button>
           <span className="brand-mark large"><Icon name="sparkle" size={28} /></span>
           <h2>ยินดีต้อนรับ</h2><p>เข้าสู่ระบบด้วยบัญชีที่โรงเรียนกำหนด</p>
           <label>ชื่อผู้ใช้<input autoComplete="username" value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} placeholder="เช่น maen" required /></label>
