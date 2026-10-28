@@ -223,7 +223,7 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
       {editable ? <div className="photo-upload-actions">
         <label className="photo-upload-button"><Icon name="image" size={16} /> เลือกรูปจากเครื่อง<input type="file" accept="image/*" multiple aria-label="เลือกรูปจากเครื่อง" onChange={uploadPhotos} disabled={photoBusy} /></label>
         <label className="photo-upload-button camera"><Icon name="camera" size={16} /> ถ่ายรูป<input type="file" accept="image/*" capture="environment" aria-label="ถ่ายรูป" onChange={uploadPhotos} disabled={photoBusy} /></label>
-        {photoBusy ? <small>กำลังอัปโหลดทีละรูป…</small> : null}
+        <small>{photoBusy ? 'กำลังย่อและอัปโหลดทีละรูป…' : 'ย่อรูปอัตโนมัติ · รูปใหญ่ประมาณ 300 KB'}</small>
       </div> : <small>ปิดการแก้ไขแล้ว</small>}
     </div>
 
