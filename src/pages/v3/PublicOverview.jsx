@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Icon from '../../components/Icon.jsx';
+import { photoPreviewUrl } from '../../utils/photoCompression.js';
 
 function thaiDate(value) {
   return new Intl.DateTimeFormat('th-TH', { dateStyle: 'long', timeZone: 'Asia/Bangkok' }).format(new Date(`${value}T12:00:00+07:00`));
@@ -61,9 +62,10 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
           {rooms.length ? <div className="room-card-grid">
             {rooms.map((room) => {
               const imageUrl = room.photo_public_urls?.[0] || room.legacy_public_url || room.legacy_thumbnail_url || null;
+              const thumbnailUrl = imageUrl === room.legacy_public_url && room.legacy_thumbnail_url ? room.legacy_thumbnail_url : photoPreviewUrl(imageUrl);
               const roomCombined = room.cleanliness_score == null || room.attendance_score == null ? null : Number(room.cleanliness_score) + Number(room.attendance_score);
               return <article className="room-result-card" key={room.id} style={{ '--team': dutyTeam.accent_color, '--team-soft': dutyTeam.soft_color }}>
-                {imageUrl ? <button className="room-photo-frame" type="button" onClick={() => setActivePhoto({ url: imageUrl, label: room.room_label })} aria-label={`ดูภาพ ${room.room_label} ขนาดใหญ่`}><img src={imageUrl} alt={`ภาพพื้นที่ ${room.room_label}`} loading="lazy" /><span><Icon name="sparkle" size={16} /> กดเพื่อดูภาพใหญ่</span></button> : <div className="room-photo-frame room-photo-placeholder"><span className="empty-icon"><Icon name="sparkle" /></span><strong>ยังไม่มีรูปภาพ</strong></div>}
+                {imageUrl ? <button className="room-photo-frame" type="button" onClick={() => setActivePhoto({ url: imageUrl, label: room.room_label })} aria-label={`ดูภาพ ${room.room_label} ขนาดใหญ่`}><img src={thumbnailUrl} alt={`ภาพพื้นที่ ${room.room_label}`} loading="lazy" /><span><Icon name="sparkle" size={16} /> กดเพื่อดูภาพใหญ่</span></button> : <div className="room-photo-frame room-photo-placeholder"><span className="empty-icon"><Icon name="sparkle" /></span><strong>ยังไม่มีรูปภาพ</strong></div>}
                 <div className="room-result-body">
                   <div className="room-card-title"><div><span className="area-code">{room.area_code}</span><h3><small>ห้อง</small>{room.room_label}</h3><p className="room-area-name"><strong>พื้นที่</strong>{room.area_name}</p></div><span className={`status-chip ${room.duty_status}`}>{statusLabel(room.duty_status)}</span></div>
                   <div className="room-score-row"><span><small>ความสะอาด</small><strong>{displayScore(room.cleanliness_score)}</strong></span><span><small>บริหารจัดการ</small><strong>{displayScore(room.attendance_score)}</strong></span><span className="total"><small>รวม</small><strong>{displayScore(roomCombined)}</strong></span></div>

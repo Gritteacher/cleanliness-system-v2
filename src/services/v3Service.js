@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
+import { compressSubmissionPhoto } from '../utils/photoCompression.js';
 
 function assertClient() {
   if (!isSupabaseConfigured || !supabase) {
@@ -75,7 +76,7 @@ export async function loadWorkspace(scoreDate = bangkokDate()) {
 
   const privatePaths = [...new Set(submissions.flatMap((row) => row.photos || [])
     .filter((photo) => photo.storage_path && !photo.public_url && !photo.legacy_public_url)
-    .map((photo) => photo.storage_path))];
+    .flatMap((photo) => [photo.storage_path, photo.thumbnail_path].filter(Boolean)))];
   const signedByPath = new Map();
   if (privatePaths.length) {
     const signedResult = await supabase.storage.from('cs-duty-photos').createSignedUrls(privatePaths, 3600);
@@ -89,7 +90,7 @@ export async function loadWorkspace(scoreDate = bangkokDate()) {
     ...row,
     photos: (row.photos || []).map((photo) => ({
       ...photo,
-      view_url: photo.public_url || photo.legacy_thumbnail_url || photo.legacy_public_url || signedByPath.get(photo.thumbnail_path || photo.storage_path) || signedByPath.get(photo.storage_path) || null,
+      view_url: (photo.public_url && photo.thumbnail_path ? supabase.storage.from('cs-published-photos').getPublicUrl(photo.thumbnail_path).data.publicUrl : photo.public_url) || photo.legacy_thumbnail_url || photo.legacy_public_url || signedByPath.get(photo.thumbnail_path || photo.storage_path) || signedByPath.get(photo.storage_path) || null,
       full_url: photo.public_url || photo.legacy_public_url || signedByPath.get(photo.storage_path) || null
     }))
   }));
@@ -151,39 +152,41 @@ export async function deleteEvaluation(evaluationId) {
 
 export async function uploadSubmissionPhoto({ submissionId, assignmentId, dutyDate, userId, file }) {
   assertClient();
-  if (!file?.type?.startsWith('image/')) throw new Error('กรุณาเลือกไฟล์รูปภาพ');
-  if (file.size > 10 * 1024 * 1024) throw new Error('รูปภาพต้องมีขนาดไม่เกิน 10 MB');
+  const { full, thumbnail } = await compressSubmissionPhoto(file);
   let activeSubmissionId = submissionId;
   if (!activeSubmissionId) {
     const submission = await ensureDutySubmission(assignmentId, dutyDate);
     activeSubmissionId = submission.id;
   }
-  const safeName = `${Date.now()}-${file.name || 'photo.jpg'}`.replace(/[^a-zA-Z0-9._-]/g, '-');
-  const path = `${dutyDate}/${assignmentId}/${userId}/${safeName}`;
-  const { error: uploadError } = await supabase.storage
-    .from('cs-published-photos')
-    .upload(path, file, { cacheControl: '3600', upsert: false });
-  if (uploadError) throw uploadError;
-
-  const publicUrl = supabase.storage.from('cs-published-photos').getPublicUrl(path).data.publicUrl;
-
-  const { data, error } = await supabase
-    .from('cs_submission_photos')
-    .insert({ submission_id: activeSubmissionId, storage_path: path, public_url: publicUrl })
-    .select()
-    .single();
-  if (error) {
-    await supabase.storage.from('cs-published-photos').remove([path]);
+  const basePath = `${dutyDate}/${assignmentId}/${userId}/photo-${crypto.randomUUID()}`;
+  const path = `${basePath}.full.webp`;
+  const thumbnailPath = `${basePath}.thumb.webp`;
+  const bucket = supabase.storage.from('cs-published-photos');
+  try {
+    for (const [uploadPath, blob] of [[path, full], [thumbnailPath, thumbnail]]) {
+      const { error } = await bucket.upload(uploadPath, blob, { cacheControl: '31536000', contentType: 'image/webp', upsert: false });
+      if (error) throw error;
+    }
+    const publicUrl = bucket.getPublicUrl(path).data.publicUrl;
+    const { data, error } = await supabase.from('cs_submission_photos')
+      .insert({ submission_id: activeSubmissionId, storage_path: path, thumbnail_path: thumbnailPath, public_url: publicUrl })
+      .select().single();
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    await bucket.remove([path, thumbnailPath]);
     throw error;
   }
-  return data;
 }
 
 export async function deleteSubmissionPhoto(photo) {
   assertClient();
   const { data: path, error } = await supabase.rpc('cs_delete_live_photo', { p_photo_id: photo.id });
   if (error) throw error;
-  if (photo.public_url && path) await supabase.storage.from('cs-published-photos').remove([path]);
+  if (photo.public_url && path) {
+    const { error: removeError } = await supabase.storage.from('cs-published-photos').remove([path, photo.thumbnail_path].filter(Boolean));
+    if (removeError) throw removeError;
+  }
 }
 
 export async function saveSchoolTerm(input) {
