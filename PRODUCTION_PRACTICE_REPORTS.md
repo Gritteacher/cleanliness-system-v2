@@ -3,7 +3,8 @@
 - Production routes: `#/` system chooser; `#/cleanliness` original system; `#/practice` public practice reports; `#/practice/summary` admin summary/export.
 - Reporting period: 2–30 November 2026 inclusive; November 7 cancelled. 28 reportable days × 5 teams = 140 required color/day slots. Multiple teacher reports count as one completed color/day slot.
 - Weekends: 08:00–16:00. Weekdays through November 15: finish 19:00; from November 16: finish 20:00. Weekday start is intentionally unspecified.
-- Public reports include manually entered teacher name, details, incident response and photos as requested. No account is required. A required confirmation checkbox gates submission.
+- Public reports show a large photo first, followed by 1–3 manually entered teacher names, details and incident response. Additional photos have selectable thumbnails and full-size previews. No account is required. A required confirmation checkbox gates submission.
+- `teacher_names` is the ordered teacher list. `teacher_name` retains the first teacher for old clients. Existing reports are backfilled to a one-name list; a nullable list remains supported during rolling upgrades. New requests validate 1–3 nonempty names (2–120 characters each). Admin summary and Excel include every name.
 - Each report accepts 1–6 images, compressed locally into full/thumbnail WebP pairs. EXIF is not copied by canvas encoding. Original input limit 10 MiB/image; server accepts at most 512 KiB/full and 128 KiB/thumb, and caps the whole request at 4 MiB.
 - RLS and explicit grants allow public reading of published reports only. No client may insert, update or delete reports or upload into the new Storage bucket directly. The JWT-verified `practice-report` Edge Function accepts the frontend anon token and performs validated service-side writes. It never requires a teacher login.
 - SHA-256-salted source counters enforce 20 submissions/10 minutes and 150/24 hours per observed network source; counters are service-only. This is baseline abuse throttling, not identity verification or complete bot prevention. Shared school networks share the quota.
@@ -15,10 +16,11 @@
 
 - `node --test tests/practiceSchedule.test.mjs`: five colors, both weekday cutoffs, weekends, November 7, date range, default date, 28 reportable days.
 - `node tests/practiceApi.mjs <private-json-with-url-and-anon>`: creates a clearly named synthetic test report; checks server validation, anonymous submission, idempotent retry, public reading/photo access and rejection of direct writes/rate-RPC access. Run only with planned cleanup of the exact generated report and image paths.
+- `node tests/practiceTeachersApi.mjs <private-json-with-url-and-anon>`: checks 1/2/3-name writes and public reads, rejects invalid name arrays, and writes exact created test IDs to `/tmp/practice-teachers-api-created.json` for scoped cleanup. Never delete other reports based on a name prefix.
 - Browser: tested upload/compression/submission, required confirmation, immediate displayed report, preserved other-color draft, date switching and disabled forms on November 7.
 - Browser Excel download reopened successfully; two test reports, typed dates, Thai names and image links checked.
 - Existing cleanliness photos/evaluations/submissions are not modified by this feature.
 
 ## Deployment
 
-Apply `supabase/migrations/20261028162355_practice_duty_reports.sql`, deploy `supabase/functions/practice-report/index.ts` with JWT verification enabled, then deploy the frontend normally through main/Netlify. Existing Supabase environment variables are reused; no service key is included in the frontend.
+Apply `supabase/migrations/20261028162355_practice_duty_reports.sql` and `supabase/migrations/20261028165850_practice_report_teacher_names.sql`, deploy `supabase/functions/practice-report/index.ts` with JWT verification enabled, then deploy the frontend normally through main/Netlify. Existing Supabase environment variables are reused; no service key is included in the frontend.

@@ -5,7 +5,7 @@ export async function loadPracticeReports(date, endDate = date) {
   const results = [];
   // Page explicitly: a busy day/range must not silently lose records at the API row limit.
   for (let offset = 0; ; offset += 500) {
-    const { data, error } = await supabase.from('cs_practice_reports').select('id,duty_date,team_id,teacher_name,outcome,details,action_taken,start_time,end_time,photos,created_at').eq('status', 'published').gte('duty_date', date).lte('duty_date', endDate).order('created_at', { ascending: false }).order('id').range(offset, offset + 499);
+    const { data, error } = await supabase.from('cs_practice_reports').select('id,duty_date,team_id,teacher_name,teacher_names,outcome,details,action_taken,start_time,end_time,photos,created_at').eq('status', 'published').gte('duty_date', date).lte('duty_date', endDate).order('created_at', { ascending: false }).order('id').range(offset, offset + 499);
     if (error) throw new Error('โหลดรายงานไม่สำเร็จ กรุณาลองอีกครั้ง');
     results.push(...data);
     if (data.length < 500) return results;
