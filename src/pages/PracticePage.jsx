@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import PracticeReportCard from '../components/PracticeReportCard.jsx';
+import PracticeFormPanel from '../components/PracticeFormPanel.jsx';
 import { enteredTeacherNames } from '../utils/practiceTeachers.js';
 import { bangkokDate } from '../services/v3Service.js';
 import { loadPracticeReports, sendPracticeReport, watchPracticeReports } from '../services/practiceService.js';
@@ -85,7 +86,7 @@ export default function PracticePage({ navigate, isAdmin = false }) {
   const complete = new Set(reports.map(r => r.team_id)).size;
   return <section className="page-container practice-page">
     <div className="practice-toolbar"><button type="button" className="practice-back" onClick={() => navigate('/')}>← เลือกระบบ</button>{isAdmin && <button type="button" className="practice-admin-link" onClick={() => navigate('/practice/summary')}><Icon name="chart" size={16} /> สรุปรายงานเวรฝึกซ้อม</button>}</div>
-    <header className="practice-page-heading practice-report-hero"><span className="eyebrow">COLOR TEAM · DUTY REPORT</span><h1>รายงานเวรดูแลนักเรียน<span>ฝึกซ้อมกิจกรรมคณะสี</span></h1><p><Icon name="calendar" size={16} /> 2–30 พฤศจิกายน 2569</p><small>เลือกวันที่ แล้วเลื่อนกรอกข้อมูลในการ์ดคณะสีของท่าน</small></header>
+    <header className="practice-page-heading practice-report-hero"><span className="eyebrow">COLOR TEAM · DUTY REPORT</span><h1>รายงานเวรดูแลนักเรียน<span>ฝึกซ้อมกิจกรรมคณะสี</span></h1><p><Icon name="calendar" size={16} /> 2–30 พฤศจิกายน 2569</p><small>เลือกวันที่ แล้วกดกรอกข้อมูลที่คณะสีของท่าน</small></header>
     <div className="practice-date-panel"><label>วันที่ปฏิบัติเวร<input aria-label="วันที่ปฏิบัติเวรฝึกซ้อม" type="date" min={PRACTICE_START} max={PRACTICE_END} value={date} disabled={active > 0} onInput={e => { if (e.target.value >= PRACTICE_START && e.target.value <= PRACTICE_END) setDate(e.target.value); }} /></label><div><strong>{practiceDateLabel(date)}</strong><span>{schedule.label}</span></div><div className="practice-completion"><strong>{schedule.enabled ? `${complete}/5` : 'งดซ้อม'}</strong><span>{schedule.enabled ? 'คณะสีรายงานแล้ว' : 'ไม่ต้องส่งรายงาน'}</span></div></div>
     {error && <div className="global-error" role="alert">{error} <button type="button" onClick={() => refresh()}>ลองอีกครั้ง</button></div>}
     <nav className="practice-team-jumps" aria-label="ไปยังคณะสี">{PRACTICE_TEAMS.map(team => <a href="#/practice" key={team.id} style={{ '--team': team.accent }} onClick={e => { e.preventDefault(); document.getElementById(`practice-${team.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}><i />{team.color}</a>)}</nav>
@@ -95,7 +96,7 @@ export default function PracticePage({ navigate, isAdmin = false }) {
         <header className="practice-team-header"><div><i /><div><small>{team.color}</small><h2>คณะ{team.name}</h2></div></div><span className={`practice-team-status ${teamReports.length ? 'done' : ''}`}>{!schedule.enabled ? 'งดซ้อม' : loading ? 'กำลังโหลด…' : error ? 'ยังตรวจสอบไม่ได้' : teamReports.length ? `รายงานแล้ว ${teamReports.length} รายการ` : 'ยังไม่รายงาน'}</span></header>
         <div className="practice-team-body practice-photo-card-layout">
           <section className="practice-history" aria-label={`รายงาน ${team.color}`}>{loading ? <p className="practice-reports-loading">กำลังโหลดรายงาน…</p> : teamReports.length ? teamReports.map(report => <PracticeReportCard key={report.id} report={report} onPhoto={setPhoto} />) : <PracticeReportCard onPhoto={setPhoto} emptyText={schedule.enabled ? 'ยังไม่มีรายงานของคณะสีนี้' : schedule.label} />}</section>
-          {draft && <TeamForm team={team} date={date} draft={draft} enabled={schedule.enabled} update={patch => setDrafts(old => ({ ...old, [key]: { ...old[key], ...patch } }))} lock={() => setActive(v => v + 1)} unlock={() => setActive(v => Math.max(0, v - 1))} onSent={report => { setReports(old => [report, ...old.filter(r => r.id !== report.id)].sort((a, b) => b.created_at.localeCompare(a.created_at))); }} />}
+          {draft && schedule.enabled && <PracticeFormPanel key={key} id={`practice-form-${key}`} color={team.color} busy={draft.busy || draft.preparing}><TeamForm team={team} date={date} draft={draft} enabled={schedule.enabled} update={patch => setDrafts(old => ({ ...old, [key]: { ...old[key], ...patch } }))} lock={() => setActive(v => v + 1)} unlock={() => setActive(v => Math.max(0, v - 1))} onSent={report => { setReports(old => [report, ...old.filter(r => r.id !== report.id)].sort((a, b) => b.created_at.localeCompare(a.created_at))); }} /></PracticeFormPanel>}
         </div>
       </article>;
     })}</div>
