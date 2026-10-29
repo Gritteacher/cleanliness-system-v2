@@ -306,11 +306,11 @@ export default function DutyRecord({ data, setData, user, navigate, refreshData 
             <div className="photo-upload-grid">
               <label className="upload-box">
                 ถ่ายภาพจากกล้อง
-                <input type="file" accept="image/*" capture="environment" onChange={handleImage} disabled={busy} />
+                <input type="file" accept="image/*,.heic,.heif" capture="environment" onChange={handleImage} disabled={busy} />
               </label>
               <label className="upload-box">
                 เลือกรูปจากอัลบั้ม
-                <input type="file" accept="image/*" onChange={handleImage} disabled={busy} />
+                <input type="file" accept="image/*,.heic,.heif" onChange={handleImage} disabled={busy} />
               </label>
             </div>
 

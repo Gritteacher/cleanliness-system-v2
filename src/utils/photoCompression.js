@@ -1,30 +1,17 @@
+import { decodeUploadPhoto } from './photoInput.js';
 const FULL_OPTIONS = { maxSide: 1600, minSide: 1000, maxBytes: 300 * 1024, minQuality: 0.65 };
 const THUMB_OPTIONS = { maxSide: 600, minSide: 400, maxBytes: 80 * 1024, minQuality: 0.6 };
 
-async function decodePhoto(file) {
-  if (typeof createImageBitmap === 'function') {
-    try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
-    catch { /* Fall back to the browser's image decoder. */ }
-  }
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
-    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('เปิดรูปภาพไม่ได้ กรุณาเลือกไฟล์ JPEG, PNG หรือ WebP')); };
-    image.src = url;
-  });
-}
-
-function encodeWebP(canvas, quality) {
+function encodePhoto(canvas, quality, mimeType) {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
-      if (!blob || blob.type !== 'image/webp') reject(new Error('เบราว์เซอร์นี้ไม่รองรับการบีบอัด WebP กรุณาใช้เบราว์เซอร์เวอร์ชันล่าสุด'));
+      if (!blob || blob.type !== mimeType) reject(new Error('เบราว์เซอร์นี้ไม่รองรับการบีบอัดภาพ กรุณาใช้เบราว์เซอร์เวอร์ชันล่าสุด'));
       else resolve(blob);
-    }, 'image/webp', quality);
+    }, mimeType, quality);
   });
 }
 
-async function compressVariant(image, options) {
+async function compressVariant(image, options, mimeType) {
   const canvas = document.createElement('canvas');
   let side = Math.min(options.maxSide, Math.max(image.width, image.height));
   const minimumSide = Math.min(side, options.minSide);
@@ -40,7 +27,7 @@ async function compressVariant(image, options) {
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
       let blob;
       for (let quality = 0.8; ; quality = Math.max(options.minQuality, quality - 0.05)) {
-        blob = await encodeWebP(canvas, quality);
+        blob = await encodePhoto(canvas, quality, mimeType);
         if (blob.size <= options.maxBytes || quality <= options.minQuality) break;
       }
       if (blob.size <= options.maxBytes || side <= minimumSide) return blob;
@@ -53,13 +40,11 @@ async function compressVariant(image, options) {
 }
 
 export async function compressSubmissionPhoto(file) {
-  if (!file?.type?.startsWith('image/')) throw new Error('กรุณาเลือกไฟล์รูปภาพ');
-  if (file.size > 10 * 1024 * 1024) throw new Error('รูปภาพต้นฉบับต้องมีขนาดไม่เกิน 10 MB');
-  const image = await decodePhoto(file);
+  const { image, mimeType } = await decodeUploadPhoto(file);
   try {
     if (!image.width || !image.height) throw new Error('ไฟล์รูปภาพไม่มีขนาดที่ถูกต้อง');
-    const full = await compressVariant(image, FULL_OPTIONS);
-    const thumbnail = await compressVariant(image, THUMB_OPTIONS);
+    const full = await compressVariant(image, FULL_OPTIONS, mimeType);
+    const thumbnail = await compressVariant(image, THUMB_OPTIONS, mimeType);
     return { full, thumbnail, originalBytes: file.size };
   } finally {
     image.close?.();
@@ -68,5 +53,5 @@ export async function compressSubmissionPhoto(file) {
 
 // Only filenames created by this upload pipeline have a matching thumbnail.
 export function photoPreviewUrl(fullUrl) {
-  return fullUrl?.replace(/\.full\.webp(?=\?|$)/, '.thumb.webp') || fullUrl;
+  return fullUrl?.replace(/\.full\.(webp|jpg)(?=\?|$)/, '.thumb.$1') || fullUrl;
 }

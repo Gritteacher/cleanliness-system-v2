@@ -1,0 +1,17 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><title>HEIC conversion verification</title>
+<style>body{font:16px/1.8 sans-serif;max-width:640px;margin:24px auto;padding:16px}img{max-width:100%;max-height:260px}pre{white-space:pre-wrap}input{padding:16px}</style>
+<h1>ทดสอบแปลง HEIC เป็น JPG</h1><p>ประมวลผลบนเครื่องเท่านั้น ไม่ส่งรายงานหรืออัปโหลดข้อมูล</p>
+<label>เลือกรูปทดสอบ<input type="file" accept="image/*,.heic,.heif"></label><pre role="status">รอเลือกรูป</pre><img alt="รูปที่แปลงแล้ว"><p><a hidden download="converted-test.jpg">ดาวน์โหลด JPG ที่แปลงแล้ว</a></p>
+<script type="module">
+import { compressSubmissionPhoto } from '/src/utils/photoCompression.js';
+document.querySelector('input').onchange=async event=>{
+  const status=document.querySelector('pre'); status.textContent='กำลังแปลง…';
+  try{
+    const photo=await compressSubmissionPhoto(event.target.files[0]);
+    const bytes=new Uint8Array(await photo.full.arrayBuffer());
+    status.textContent=JSON.stringify({fullType:photo.full.type,thumbnailType:photo.thumbnail.type,fullBytes:photo.full.size,thumbnailBytes:photo.thumbnail.size,originalBytes:photo.originalBytes,jpegSignature:bytes[0]===255&&bytes[1]===216&&bytes.at(-2)===255&&bytes.at(-1)===217},null,2);
+    const url=URL.createObjectURL(photo.full); document.querySelector('img').src=url;
+    const link=document.querySelector('a');link.href=url;link.hidden=false;
+  }catch(error){status.textContent='ERROR: '+error.message;}
+};
+</script></html>

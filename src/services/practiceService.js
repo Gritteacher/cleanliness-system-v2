@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js';
+import { photoExtension } from '../utils/photoInput.js';
 
 export async function loadPracticeReports(date, endDate = date) {
   if (!supabase) throw new Error('ยังไม่ได้เชื่อมต่อระบบรายงาน กรุณาลองใหม่ภายหลัง');
@@ -16,7 +17,7 @@ export async function sendPracticeReport(payload, photos) {
   if (!supabase) throw new Error('ยังไม่ได้เชื่อมต่อระบบรายงาน');
   const form = new FormData();
   form.append('report', JSON.stringify({ ...payload, photo_count: photos.length }));
-  photos.forEach((photo, index) => { form.append(`full${index}`, photo.full, `photo-${index}.webp`); form.append(`thumb${index}`, photo.thumbnail, `thumb-${index}.webp`); });
+  photos.forEach((photo, index) => { form.append(`full${index}`, photo.full, `photo-${index}.${photoExtension(photo.full)}`); form.append(`thumb${index}`, photo.thumbnail, `thumb-${index}.${photoExtension(photo.thumbnail)}`); });
   const { data, error } = await supabase.functions.invoke('practice-report', { body: form });
   if (error) {
     let message = 'ส่งรายงานไม่สำเร็จ ข้อมูลที่กรอกยังอยู่ กรุณาลองอีกครั้ง';

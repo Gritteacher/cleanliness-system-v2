@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 import { compressSubmissionPhoto } from '../utils/photoCompression.js';
+import { photoExtension } from '../utils/photoInput.js';
 
 function assertClient() {
   if (!isSupabaseConfigured || !supabase) {
@@ -159,12 +160,12 @@ export async function uploadSubmissionPhoto({ submissionId, assignmentId, dutyDa
     activeSubmissionId = submission.id;
   }
   const basePath = `${dutyDate}/${assignmentId}/${userId}/photo-${crypto.randomUUID()}`;
-  const path = `${basePath}.full.webp`;
-  const thumbnailPath = `${basePath}.thumb.webp`;
+  const path = `${basePath}.full.${photoExtension(full)}`;
+  const thumbnailPath = `${basePath}.thumb.${photoExtension(thumbnail)}`;
   const bucket = supabase.storage.from('cs-published-photos');
   try {
     for (const [uploadPath, blob] of [[path, full], [thumbnailPath, thumbnail]]) {
-      const { error } = await bucket.upload(uploadPath, blob, { cacheControl: '31536000', contentType: 'image/webp', upsert: false });
+      const { error } = await bucket.upload(uploadPath, blob, { cacheControl: '31536000', contentType: blob.type, upsert: false });
       if (error) throw error;
     }
     const publicUrl = bucket.getPublicUrl(path).data.publicUrl;
