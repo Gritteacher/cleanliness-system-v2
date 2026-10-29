@@ -173,6 +173,7 @@ footer { display: flex; justify-content: space-between; gap: 20px; width: min(11
 .app-footer .footer-print-version { display: none; }
 @media (max-width: 700px) {
   .app-footer { display: flex; padding-block: 12px; }
+  .app-shell:not(:has(> .mobile-nav)) { padding-bottom: 0; }
 }
 @media print {
   .app-shell { padding-bottom: 0 !important; }
