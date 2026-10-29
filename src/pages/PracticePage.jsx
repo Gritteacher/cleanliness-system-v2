@@ -3,9 +3,10 @@ import Icon from '../components/Icon.jsx';
 import PracticeReportCard from '../components/PracticeReportCard.jsx';
 import PracticeFormPanel from '../components/PracticeFormPanel.jsx';
 import PracticePdfExport from '../components/PracticePdfExport.jsx';
+import AdminPracticeEditor from '../components/AdminPracticeEditor.jsx';
 import { enteredTeacherNames } from '../utils/practiceTeachers.js';
 import { bangkokDate } from '../services/v3Service.js';
-import { loadPracticeReports, sendPracticeReport, watchPracticeReports } from '../services/practiceService.js';
+import { loadPracticeReports, sendPracticeReport, watchPracticeReports, managePracticeReport } from '../services/practiceService.js';
 import { compressSubmissionPhoto } from '../utils/photoCompression.js';
 import { PRACTICE_START, PRACTICE_END, PRACTICE_TEAMS, practiceDefaultDate, practiceSchedule, practiceDateLabel } from '../utils/practiceSchedule.js';
 
@@ -65,14 +66,16 @@ export default function PracticePage({ navigate, isAdmin = false }) {
   const [date, setDate] = useState(() => practiceDefaultDate(bangkokDate()));
   const [reports, setReports] = useState([]), [loading, setLoading] = useState(true), [error, setError] = useState('');
   const [drafts, setDrafts] = useState({}), [active, setActive] = useState(0), [photo, setPhoto] = useState(null);
+  const [editor,setEditor]=useState(null),[showDeleted,setShowDeleted]=useState(false),[adminBusy,setAdminBusy]=useState(false),[adminNotice,setAdminNotice]=useState('');
+  const deletedMode=isAdmin&&showDeleted;
   const request = useRef(0), draftsRef = useRef(drafts); draftsRef.current = drafts;
   const schedule = practiceSchedule(date);
   const refresh = useCallback(async (quiet = false) => {
     const id = ++request.current; if (!quiet) setLoading(true);
-    try { const next = await loadPracticeReports(date); if (id === request.current) { setReports(next); setError(''); } }
+    try { const next = await loadPracticeReports(date,date,deletedMode); if (id === request.current) { setReports(next); setError(''); } }
     catch (err) { if (id === request.current) setError(err.message); }
     finally { if (id === request.current) setLoading(false); }
-  }, [date]);
+  }, [date,deletedMode]);
   useEffect(() => {
     setReports([]); refresh();
     const stop = watchPracticeReports(date, () => refresh(true));
@@ -84,22 +87,33 @@ export default function PracticePage({ navigate, isAdmin = false }) {
   // Initialize lazily without remounting forms during background updates.
   useEffect(() => { setDrafts(old => { const next = { ...old }; for (const team of PRACTICE_TEAMS) next[`${date}-${team.id}`] ||= newDraft(); return next; }); }, [date]);
   const complete = new Set(reports.map(r => r.team_id)).size;
+  async function removeOrRestore(report,operation){
+    if(!isAdmin||adminBusy)return;
+    if(operation==='delete'&&!window.confirm('ลบรายงานนี้ออกจากหน้าสาธารณะและไฟล์ส่งออกใช่หรือไม่? Admin สามารถกู้คืนได้ภายหลัง'))return;
+    setAdminBusy(true);setAdminNotice('');
+    try{await managePracticeReport({operation,id:report.id,expected_updated_at:report.updated_at});setReports(old=>old.filter(r=>r.id!==report.id));setAdminNotice(operation==='delete'?'ลบรายงานแล้ว สามารถกู้คืนจากรายการที่ลบได้':'กู้คืนรายงานแล้ว');await refresh(true);}
+    catch(err){setError(err.message);}finally{setAdminBusy(false);}
+  }
   return <section className="page-container practice-page">
     <div className="practice-toolbar"><button type="button" className="practice-back" onClick={() => navigate('/')}>← เลือกระบบ</button><div className="practice-toolbar-actions"><PracticePdfExport date={date}/>{isAdmin && <button type="button" className="practice-admin-link" onClick={() => navigate('/practice/summary')}><Icon name="chart" size={16} /> สรุปรายงานเวรฝึกซ้อม</button>}</div></div>
     <header className="practice-page-heading practice-report-hero"><span className="eyebrow">COLOR TEAM · DUTY REPORT</span><h1>รายงานเวรดูแลนักเรียน<span>ฝึกซ้อมกิจกรรมคณะสี</span></h1><p><Icon name="calendar" size={16} /> 2–30 พฤศจิกายน 2569</p><small>เลือกวันที่ แล้วกดกรอกข้อมูลที่คณะสีของท่าน</small></header>
-    <div className="practice-date-panel"><label>วันที่ปฏิบัติเวร<input aria-label="วันที่ปฏิบัติเวรฝึกซ้อม" type="date" min={PRACTICE_START} max={PRACTICE_END} value={date} disabled={active > 0} onInput={e => { if (e.target.value >= PRACTICE_START && e.target.value <= PRACTICE_END) setDate(e.target.value); }} /></label><div><strong>{practiceDateLabel(date)}</strong><span>{schedule.label}</span></div><div className="practice-completion"><strong>{schedule.enabled ? `${complete}/5` : 'งดซ้อม'}</strong><span>{schedule.enabled ? 'คณะสีรายงานแล้ว' : 'ไม่ต้องส่งรายงาน'}</span></div></div>
+    {isAdmin&&<div className="practice-admin-toolbar"><span>จัดการรายงาน · Admin</span><button type="button" aria-pressed={deletedMode} onClick={()=>setShowDeleted(value=>!value)} disabled={adminBusy}>{deletedMode?'กลับรายงานปัจจุบัน':'รายการที่ลบ / กู้คืน'}</button></div>}
+    {isAdmin&&adminNotice&&<p className="practice-success" role="status">{adminNotice}</p>}
+    <div className="practice-date-panel"><label>วันที่ปฏิบัติเวร<input aria-label="วันที่ปฏิบัติเวรฝึกซ้อม" type="date" min={PRACTICE_START} max={PRACTICE_END} value={date} disabled={active > 0} onInput={e => { if (e.target.value >= PRACTICE_START && e.target.value <= PRACTICE_END) setDate(e.target.value); }} /></label><div><strong>{practiceDateLabel(date)}</strong><span>{schedule.label}</span></div><div className="practice-completion"><strong>{deletedMode?String(reports.length):schedule.enabled ? `${complete}/5` : 'งดซ้อม'}</strong><span>{deletedMode?'รายงานที่ลบ':schedule.enabled ? 'คณะสีรายงานแล้ว' : 'ไม่ต้องส่งรายงาน'}</span></div></div>
     {error && <div className="global-error" role="alert">{error} <button type="button" onClick={() => refresh()}>ลองอีกครั้ง</button></div>}
     <nav className="practice-team-jumps" aria-label="ไปยังคณะสี">{PRACTICE_TEAMS.map(team => <a href="#/practice" key={team.id} style={{ '--team': team.accent }} onClick={e => { e.preventDefault(); document.getElementById(`practice-${team.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}><i />{team.color}</a>)}</nav>
     <div className="practice-team-list">{PRACTICE_TEAMS.map(team => {
       const key = `${date}-${team.id}`, draft = drafts[key], teamReports = reports.filter(r => r.team_id === team.id);
       return <article key={team.id} id={`practice-${team.id}`} className="practice-team-card" style={{ '--team': team.accent, '--team-soft': team.soft }}>
-        <header className="practice-team-header"><div><i /><div><small>{team.color}</small><h2>คณะ{team.name}</h2></div></div><span className={`practice-team-status ${teamReports.length ? 'done' : ''}`}>{!schedule.enabled ? 'งดซ้อม' : loading ? 'กำลังโหลด…' : error ? 'ยังตรวจสอบไม่ได้' : teamReports.length ? `รายงานแล้ว ${teamReports.length} รายการ` : 'ยังไม่รายงาน'}</span></header>
+        <header className="practice-team-header"><div><i /><div><small>{team.color}</small><h2>คณะ{team.name}</h2></div></div><span className={`practice-team-status ${teamReports.length ? 'done' : ''}`}>{!schedule.enabled ? 'งดซ้อม' : loading ? 'กำลังโหลด…' : error ? 'ยังตรวจสอบไม่ได้' : deletedMode?`ลบแล้ว ${teamReports.length} รายการ`:teamReports.length ? `รายงานแล้ว ${teamReports.length} รายการ` : 'ยังไม่รายงาน'}</span></header>
         <div className="practice-team-body practice-photo-card-layout">
-          <section className="practice-history" aria-label={`รายงาน ${team.color}`}>{loading ? <p className="practice-reports-loading">กำลังโหลดรายงาน…</p> : teamReports.length ? teamReports.map(report => <PracticeReportCard key={report.id} report={report} onPhoto={setPhoto} />) : <PracticeReportCard onPhoto={setPhoto} emptyText={schedule.enabled ? 'ยังไม่มีรายงานของคณะสีนี้' : schedule.label} />}</section>
-          {draft && schedule.enabled && <PracticeFormPanel key={key} id={`practice-form-${key}`} color={team.color} subtitle={`คณะ${team.name} · ${practiceDateLabel(date)}`} busy={draft.busy || draft.preparing}><TeamForm team={team} date={date} draft={draft} enabled={schedule.enabled} update={patch => setDrafts(old => ({ ...old, [key]: { ...old[key], ...patch } }))} lock={() => setActive(v => v + 1)} unlock={() => setActive(v => Math.max(0, v - 1))} onSent={report => { setReports(old => [report, ...old.filter(r => r.id !== report.id)].sort((a, b) => b.created_at.localeCompare(a.created_at))); }} /></PracticeFormPanel>}
+          <section className="practice-history" aria-label={`รายงาน ${team.color}`}>{loading ? <p className="practice-reports-loading">กำลังโหลดรายงาน…</p> : teamReports.length ? teamReports.map(report => <PracticeReportCard key={report.id} report={report} onPhoto={setPhoto} disabled={adminBusy} onEdit={isAdmin?(report)=>setEditor({report,team,date}):undefined} onDelete={isAdmin?(report)=>removeOrRestore(report,'delete'):undefined} onRestore={isAdmin?(report)=>removeOrRestore(report,'restore'):undefined} />) : <PracticeReportCard onPhoto={setPhoto} emptyText={deletedMode?'ไม่มีรายการที่ลบของคณะสีนี้':schedule.enabled ? 'ยังไม่มีรายงานของคณะสีนี้' : schedule.label} />}</section>
+          {isAdmin&&schedule.enabled&&!deletedMode&&<div className="practice-form-panel"><button type="button" className="practice-form-toggle practice-admin-add" onClick={()=>setEditor({report:null,team,date})} disabled={adminBusy}>+ เพิ่มรายงาน · Admin</button></div>}
+          {draft && schedule.enabled && !isAdmin && !deletedMode && <PracticeFormPanel key={key} id={`practice-form-${key}`} color={team.color} subtitle={`คณะ${team.name} · ${practiceDateLabel(date)}`} busy={draft.busy || draft.preparing}><TeamForm team={team} date={date} draft={draft} enabled={schedule.enabled} update={patch => setDrafts(old => ({ ...old, [key]: { ...old[key], ...patch } }))} lock={() => setActive(v => v + 1)} unlock={() => setActive(v => Math.max(0, v - 1))} onSent={report => { setReports(old => [report, ...old.filter(r => r.id !== report.id)].sort((a, b) => b.created_at.localeCompare(a.created_at))); }} /></PracticeFormPanel>}
         </div>
       </article>;
     })}</div>
+    {isAdmin&&editor&&<AdminPracticeEditor value={editor} onClose={()=>setEditor(null)} onSaved={next=>{setEditor(null);setAdminNotice('บันทึกข้อมูลแล้ว');setShowDeleted(false);if(next.duty_date!==date)setDate(next.duty_date);else refresh(true);}}/>}
     {photo && <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label="ภาพรายงานขนาดใหญ่" onClick={() => setPhoto(null)}><button type="button" className="photo-lightbox-close" autoFocus onClick={() => setPhoto(null)} aria-label="ปิดภาพ">×</button><figure onClick={e => e.stopPropagation()}><img src={photo} alt="ภาพรายงานเวรฝึกซ้อมขนาดใหญ่" /></figure></div>}
   </section>;
 }

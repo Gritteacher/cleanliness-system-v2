@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Icon from './Icon.jsx';
 import { reportTeacherNames } from '../utils/practiceTeachers.js';
 
-export default function PracticeReportCard({ report, onPhoto, emptyText = 'ยังไม่มีรายงานของคณะสีนี้' }) {
+export default function PracticeReportCard({ report, onPhoto, onEdit, onDelete, onRestore, disabled = false, emptyText = 'ยังไม่มีรายงานของคณะสีนี้' }) {
   const [selected, setSelected] = useState(0);
   const [failed, setFailed] = useState('');
   const photos = report?.photos || [];
@@ -21,5 +21,6 @@ export default function PracticeReportCard({ report, onPhoto, emptyText = 'ย�
       {teachers.length ? <ul className="practice-teacher-names">{teachers.map((name, i) => <li key={`${i}-${name}`}>{name}</li>)}</ul> : <p className="practice-report-awaiting">{emptyText}</p>}
       {report && <><div className="practice-report-description"><small>รายละเอียดการดูแล</small><p>{report.details}</p>{report.action_taken && <><small>การดำเนินการ</small><p>{report.action_taken}</p></>}</div><div className="practice-report-card-time"><Icon name="calendar" size={14} /><span>ส่งเมื่อ {time} น.</span></div></>}
     </div>
+    {report&&(onEdit||onDelete||onRestore)&&<div className="practice-admin-report-actions">{onEdit&&!report.deleted_at&&<button type="button" disabled={disabled} onClick={()=>onEdit(report)}>แก้ไขข้อมูล</button>}{onDelete&&!report.deleted_at&&<button type="button" className="danger" disabled={disabled} onClick={()=>onDelete(report)}>ลบรายงาน</button>}{onRestore&&report.deleted_at&&<button type="button" disabled={disabled} onClick={()=>onRestore(report)}>กู้คืนรายงาน</button>}</div>}
   </article>;
 }

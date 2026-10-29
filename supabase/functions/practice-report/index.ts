@@ -1,12 +1,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.2';
-import { validatedPhotoType } from './photoValidation.js';
+import { validatedPhotoType } from '../_shared/photoValidation.js';
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const url = Deno.env.get('SUPABASE_URL')!;
 const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 const bucket = 'practice-duty-photos';
-const fields = 'id,duty_date,team_id,teacher_name,teacher_names,outcome,details,action_taken,start_time,end_time,photos,created_at';
+const fields = 'id,duty_date,team_id,teacher_name,teacher_names,outcome,details,action_taken,start_time,end_time,photos,created_at,updated_at,deleted_at';
 function reply(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }); }
 function fail(message: string, status = 400): never { throw Object.assign(new Error(message), { status }); }
 async function limitedBody(req: Request) {
@@ -47,7 +47,7 @@ Deno.serve(async req => {
     for (let i=0;i<p.photo_count;i++) files.push({ full: await uploadedPhoto(form.get(`full${i}`),524288), thumbnail: await uploadedPhoto(form.get(`thumb${i}`),131072) });
     const { data: existing, error: lookupError } = await admin.from('cs_practice_reports').select(fields+',status').eq('id',p.id).maybeSingle();
     if (lookupError) throw lookupError;
-    if (existing) { if (existing.status === 'published') { const { status: _, ...report } = existing; return reply({ report }); } fail('รายงานนี้กำลังประมวลผล กรุณารอสักครู่แล้วลองใหม่',409); }
+    if (existing) { if(existing.deleted_at)fail('ไม่พบรายงานนี้',404); if (existing.status === 'published') { const { status: _, ...report } = existing; return reply({ report }); } fail('รายงานนี้กำลังประมวลผล กรุณารอสักครู่แล้วลองใหม่',409); }
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || 'unknown';
     const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(key+':practice:'+ip)))].map(b=>b.toString(16).padStart(2,'0')).join('');
     const { data: allowed, error: rateError } = await admin.rpc('cs_practice_claim_rate',{p_source:hash});

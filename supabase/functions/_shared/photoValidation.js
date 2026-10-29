@@ -1,4 +1,4 @@
-// Verify the declared MIME against file signatures, never trust filename alone.
+// Shared upload validation: verify MIME and signatures, never trust filename alone.
 export function validatedPhotoType(bytes, mime) {
   if (mime === 'image/jpeg' && bytes.length >= 20 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff && bytes.at(-2) === 0xff && bytes.at(-1) === 0xd9) return { contentType: 'image/jpeg', extension: 'jpg' };
   const ascii = (start, end) => String.fromCharCode(...bytes.slice(start, end));
