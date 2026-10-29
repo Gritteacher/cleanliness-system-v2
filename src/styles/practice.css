@@ -208,7 +208,31 @@
 .practice-modal-body .practice-form fieldset { gap: 14px; }
 .practice-modal-body .practice-teacher-fields { gap: 10px; }
 .practice-modal-body .practice-add-teacher { min-height: 44px; }
+.practice-toolbar-actions { display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+.practice-pdf-trigger { display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 12px;border:1px solid var(--green-600);border-radius:11px;background:white;color:var(--green-800);font-size:14px;line-height:1.7; }
+.practice-pdf-form fieldset { margin:0;padding:0;border:0;min-width:0;display:grid;gap:14px; }
+.practice-pdf-form legend { padding:0;margin-bottom:10px;font-size:14px;font-weight:400; }
+.practice-pdf-modes { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.practice-pdf-modes label { display:flex;flex-direction:row;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px; }
+.practice-pdf-modes label.selected { background:var(--green-50);border-color:var(--green-600); }
+.practice-pdf-form input[type=radio],.practice-pdf-form input[type=checkbox] { width:18px;height:18px;min-height:18px;padding:0;margin:0;flex:0 0 18px;accent-color:var(--green-700); }
+.practice-pdf-dates { display:grid;gap:12px; }
+.practice-pdf-dates label { display:grid;gap:6px;min-width:0;font-size:14px;line-height:1.7; }
+.practice-pdf-dates input { min-width:0;width:100%;min-height:46px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--canvas);color:var(--ink); }
+.practice-pdf-team-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px; }
+.practice-pdf-team-heading strong { font-size:14px;font-weight:400; }
+.practice-pdf-team-heading button { min-height:44px;padding:6px 8px;border:0;background:none;color:var(--green-700);font-size:13px; }
+.practice-pdf-team-options { display:grid;gap:8px; }
+.practice-pdf-team-options label { display:flex;flex-direction:row;align-items:center;gap:10px;min-height:54px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;line-height:1.6; }
+.practice-pdf-team-options i { flex:0 0 5px;width:5px;height:30px;border-radius:5px;background:var(--team); }
+.practice-pdf-team-options span { min-width:0;font-size:14px;overflow-wrap:anywhere; }.practice-pdf-team-options small { display:block;font-size:12px;color:var(--muted); }
+.practice-pdf-help { margin:0;color:var(--muted);font-size:12px;line-height:1.8; }
+.practice-pdf-download { width:100%;min-height:48px;font-size:15px; }
+.practice-pdf-progress { color:var(--green-800);font-size:13px;line-height:1.8; }
+.practice-pdf-form :focus-visible,.practice-pdf-trigger:focus-visible { outline:2px solid var(--green-600);outline-offset:3px; }
 @media (min-width: 640px) {
+  .practice-pdf-dates { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .practice-pdf-dates label:only-child { grid-column:1/-1; }
   .practice-form-dialog { inset: 0; margin: auto; width: min(560px,calc(100% - 48px)); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); border-radius: 20px; }
   .practice-modal-header { padding: 16px 20px; }
   .practice-modal-body { padding: 20px; }

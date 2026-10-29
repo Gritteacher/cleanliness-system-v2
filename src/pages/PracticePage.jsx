@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import PracticeReportCard from '../components/PracticeReportCard.jsx';
 import PracticeFormPanel from '../components/PracticeFormPanel.jsx';
+import PracticePdfExport from '../components/PracticePdfExport.jsx';
 import { enteredTeacherNames } from '../utils/practiceTeachers.js';
 import { bangkokDate } from '../services/v3Service.js';
 import { loadPracticeReports, sendPracticeReport, watchPracticeReports } from '../services/practiceService.js';
@@ -84,7 +85,7 @@ export default function PracticePage({ navigate, isAdmin = false }) {
   useEffect(() => { setDrafts(old => { const next = { ...old }; for (const team of PRACTICE_TEAMS) next[`${date}-${team.id}`] ||= newDraft(); return next; }); }, [date]);
   const complete = new Set(reports.map(r => r.team_id)).size;
   return <section className="page-container practice-page">
-    <div className="practice-toolbar"><button type="button" className="practice-back" onClick={() => navigate('/')}>← เลือกระบบ</button>{isAdmin && <button type="button" className="practice-admin-link" onClick={() => navigate('/practice/summary')}><Icon name="chart" size={16} /> สรุปรายงานเวรฝึกซ้อม</button>}</div>
+    <div className="practice-toolbar"><button type="button" className="practice-back" onClick={() => navigate('/')}>← เลือกระบบ</button><div className="practice-toolbar-actions"><PracticePdfExport date={date}/>{isAdmin && <button type="button" className="practice-admin-link" onClick={() => navigate('/practice/summary')}><Icon name="chart" size={16} /> สรุปรายงานเวรฝึกซ้อม</button>}</div></div>
     <header className="practice-page-heading practice-report-hero"><span className="eyebrow">COLOR TEAM · DUTY REPORT</span><h1>รายงานเวรดูแลนักเรียน<span>ฝึกซ้อมกิจกรรมคณะสี</span></h1><p><Icon name="calendar" size={16} /> 2–30 พฤศจิกายน 2569</p><small>เลือกวันที่ แล้วกดกรอกข้อมูลที่คณะสีของท่าน</small></header>
     <div className="practice-date-panel"><label>วันที่ปฏิบัติเวร<input aria-label="วันที่ปฏิบัติเวรฝึกซ้อม" type="date" min={PRACTICE_START} max={PRACTICE_END} value={date} disabled={active > 0} onInput={e => { if (e.target.value >= PRACTICE_START && e.target.value <= PRACTICE_END) setDate(e.target.value); }} /></label><div><strong>{practiceDateLabel(date)}</strong><span>{schedule.label}</span></div><div className="practice-completion"><strong>{schedule.enabled ? `${complete}/5` : 'งดซ้อม'}</strong><span>{schedule.enabled ? 'คณะสีรายงานแล้ว' : 'ไม่ต้องส่งรายงาน'}</span></div></div>
     {error && <div className="global-error" role="alert">{error} <button type="button" onClick={() => refresh()}>ลองอีกครั้ง</button></div>}
