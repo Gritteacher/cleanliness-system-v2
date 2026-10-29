@@ -1,5 +1,14 @@
 # Color-team practice duty reports
 
+## Public PDF export
+
+- The public `#/practice` page offers PDF export without login: single day or inclusive date range, one or several teams.
+- `create-practice-pdf` reads published reports through the anon client/RLS only. It does not accept report content from callers and performs no database writes. Request validation, public-storage URL allowlist, bounded image reads, escaped text, blocked renderer networking and per-IP rate limits protect the public endpoint.
+- A4 landscape daily summary shows every selected team on one page, including explicit missing/canceled states. Latest report is featured; duplicate reports and long fields are preserved in full appendices. Images use embedded thumbnails with clickable original links. No internal report reference is shown.
+- Sarabun regular/medium fonts are bundled under `netlify/assets` with OFL license, so PDFs do not depend on external font services. Chromium binary and fonts must be included in the function bundle.
+- Exports over 4.4 MB return a visible request to narrow the range instead of silently dropping data. The PDF contains current public data at generation time.
+- QA: `npm test`; `node tests/verifyPracticePdf.mjs <private-access-config.json> <sample.jpg>` (set `PDF_CHROME_PATH` for a non-default local Chrome path), then inspect rendered pages with Poppler. Never commit the private access config or generated QA PDFs.
+
 - Production routes: `#/` system chooser; `#/cleanliness` original system; `#/practice` public practice reports; `#/practice/summary` admin summary/export.
 - Reporting period: 2–30 November 2026 inclusive; November 7 cancelled. 28 reportable days × 5 teams = 140 required color/day slots. Multiple teacher reports count as one completed color/day slot.
 - Weekends: 08:00–16:00. Weekdays through November 15: finish 19:00; from November 16: finish 20:00. Weekday start is intentionally unspecified.
