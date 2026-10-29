@@ -170,6 +170,7 @@
 .practice-page .practice-team-header h2 { font-size: 17px; line-height: 1.6; }
 .practice-page .practice-team-status { font-size: 11px; line-height: 1.6; padding: 4px 8px; }
 .practice-page .practice-report-cover { aspect-ratio: 16/9; max-height: 200px; }
+.practice-page .practice-report-cover > img { object-fit: contain; object-position: center; }
 .practice-page .practice-report-card-body { padding: 12px 14px; }
 .practice-page .practice-teacher-names li { font-size: 17px; line-height: 1.7; }
 .practice-page .practice-report-card-meta { margin-bottom: 6px; gap: 6px; }
