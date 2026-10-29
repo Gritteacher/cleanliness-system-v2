@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { APP_ATTRIBUTION } from '../../../shared/appMetadata.mjs';
+import { APP_ATTRIBUTION, APP_SHORT_NAME_EN } from '../../../shared/appMetadata.mjs';
 
 export async function pdfAttributionFooter(page) {
   const font = (await readFile(resolve('netlify/assets/Sarabun-Regular.ttf'))).toString('base64');
@@ -17,5 +17,5 @@ export async function pdfAttributionFooter(page) {
     context.fillText(text, 0, 30);
     return canvas.toDataURL('image/png');
   }, { font, text: APP_ATTRIBUTION });
-  return `<div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 10mm;font:8px sans-serif;color:#7b8a80"><img src="${image}" style="width:466.67px;height:14px" alt="${APP_ATTRIBUTION}"><span>Clean &amp; Care · <span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`;
+  return `<div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 10mm;font:8px sans-serif;color:#7b8a80"><img src="${image}" style="width:466.67px;height:14px" alt="${APP_ATTRIBUTION}"><span>${APP_SHORT_NAME_EN} · <span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`;
 }

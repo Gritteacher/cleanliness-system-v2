@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Icon from '../../components/Icon.jsx';
+import { APP_NAME_EN } from '../../../shared/appMetadata.mjs';
 import { login } from '../../utils/auth.js';
 
 export default function LoginPage({ onLogin, navigate }) {
@@ -18,7 +19,7 @@ export default function LoginPage({ onLogin, navigate }) {
   return (
     <div className="auth-layout">
       <section className="auth-message">
-        <span className="eyebrow light">Clean & Care Workspace</span>
+        <span className="eyebrow light">{APP_NAME_EN}</span>
         <h1>ดูแลพื้นที่<br />ด้วยข้อมูลที่ชัดเจน</h1>
         <p>สำหรับประธานคณะและผู้ดูแลระบบ บันทึกการทำเวร ประเมินความสะอาด และติดตามความครบถ้วนในที่เดียว</p>
         <div className="auth-points"><span><Icon name="check" /> ข้อมูลแยกตามสิทธิ์</span><span><Icon name="check" /> รูปภาพจัดเก็บแบบ private</span><span><Icon name="check" /> มีประวัติการแก้ไข</span></div>

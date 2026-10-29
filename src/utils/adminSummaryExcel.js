@@ -222,7 +222,6 @@ export async function createAdminSummaryWorkbook(options) {
   const ExcelJSImport = await import('exceljs');
   const ExcelJS = ExcelJSImport.default || ExcelJSImport;
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Cleanliness System';
   workbook.company = 'โรงเรียนเทพศิรินทร์ นนทบุรี';
   workbook.created = new Date();
   workbook.modified = new Date();

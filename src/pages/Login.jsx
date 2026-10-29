@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { login } from '../utils/auth.js';
+import { APP_NAME_TH, APP_NAME_EN } from '../../shared/appMetadata.mjs';
 
 const LOGO_URL = 'https://www.tsn.ac.th/web/wp-content/uploads/2013/12/Logo_Blue-700x639.png';
 
@@ -33,8 +34,8 @@ export default function Login({ onLogin, navigate }) {
           <div className="login-brand-row">
             <img src={LOGO_URL} alt="โรงเรียนเทพศิรินทร์ นนทบุรี" />
             <div>
-              <span className="eyebrow">Cleanliness System V2</span>
-              <h2>ระบบตรวจความสะอาดคณะสี</h2>
+              <span className="eyebrow">{APP_NAME_EN}</span>
+              <h2>{APP_NAME_TH}</h2>
             </div>
           </div>
           <p>

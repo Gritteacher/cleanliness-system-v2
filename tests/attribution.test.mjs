@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import ExcelJS from 'exceljs';
-import { APP_VERSION, APP_ATTRIBUTION, DEVELOPER_CREDIT, DEVELOPER_NAME } from '../shared/appMetadata.mjs';
+import { APP_VERSION, APP_ATTRIBUTION, DEVELOPER_CREDIT, DEVELOPER_NAME, APP_NAME_TH, APP_NAME_EN } from '../shared/appMetadata.mjs';
 import { createAdminSummaryWorkbook } from '../src/utils/adminSummaryExcel.js';
 import { applyWorkbookAttribution } from '../src/utils/exportAttribution.js';
 import { practicePdfHtml } from '../netlify/functions/utils/practicePdfLayout.mjs';
@@ -17,6 +17,13 @@ test('version is taken from the package and lockfile matches',async()=>{
 test('all App route shells include the shared footer',async()=>{
   const app=await fs.readFile(new URL('../src/App.jsx',import.meta.url),'utf8');
   assert.equal((app.match(/className="app-shell"/g)||[]).length,(app.match(/<AppFooter\s*\/>/g)||[]).length);
+});
+test('system branding is consistent in the browser title and PDF layout',async()=>{
+  const index=await fs.readFile(new URL('../index.html',import.meta.url),'utf8');
+  assert.ok(index.includes(APP_NAME_TH));assert.ok(index.includes(APP_NAME_EN));
+  const options=practicePdfOptions({start:'2026-11-02',end:'2026-11-02',teamIds:['maen']});
+  const html=practicePdfHtml({options,reports:[],supabaseUrl:'https://example.supabase.co',regularFont:'',mediumFont:''});
+  assert.ok(html.includes(APP_NAME_TH));assert.ok(html.includes(APP_NAME_EN));assert.ok(!/Clean\s*&(?:amp;)?\s*Care/i.test(html));
 });
 test('PDF template and margin footer use the same attribution',async()=>{
   const options=practicePdfOptions({start:'2026-11-02',end:'2026-11-03',teamIds:['maen']});
