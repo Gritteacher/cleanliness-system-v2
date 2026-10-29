@@ -1,4 +1,5 @@
 import Icon from './Icon.jsx';
+import { APP_NAME_TH, APP_SHORT_NAME_TH, APP_NAME_EN } from '../../shared/appMetadata.mjs';
 
 export default function AppHeader({ user, route, navigate, onLogout }) {
   const links = user
@@ -13,11 +14,11 @@ export default function AppHeader({ user, route, navigate, onLogout }) {
 
   return (
     <header className="topbar">
-      <button className="brand-lockup" type="button" onClick={() => navigate('/')}>
+      <button className="brand-lockup" type="button" title={APP_NAME_TH} aria-label={`${APP_NAME_TH} (${APP_NAME_EN})`} onClick={() => navigate('/')}>
         <span className="brand-mark"><Icon name="sparkle" size={23} /></span>
         <span>
-          <strong>Clean & Care</strong>
-          <small>เทพศิรินทร์ นนทบุรี</small>
+          <strong>{APP_SHORT_NAME_TH}</strong>
+          <small>{APP_NAME_EN}</small>
         </span>
       </button>
 

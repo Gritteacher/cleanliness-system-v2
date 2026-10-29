@@ -1,9 +1,10 @@
-import { APP_VERSION, APP_ATTRIBUTION, DEVELOPER_NAME, DEVELOPER_CREDIT } from '../../shared/appMetadata.mjs';
+import { APP_VERSION, APP_ATTRIBUTION, DEVELOPER_NAME, DEVELOPER_CREDIT, APP_NAME_TH, APP_NAME_EN } from '../../shared/appMetadata.mjs';
 
 export function applyWorkbookAttribution(workbook) {
   workbook.creator = DEVELOPER_NAME;
   workbook.lastModifiedBy = DEVELOPER_NAME;
   workbook.description = APP_ATTRIBUTION;
+  workbook.title = `${APP_NAME_TH} (${APP_NAME_EN})`;
   for (const sheet of workbook.worksheets) {
     // Keep the table, filter and frozen rows unchanged. Credit is outside the data.
     const rowNumber = sheet.rowCount + 2;
