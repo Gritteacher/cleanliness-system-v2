@@ -164,19 +164,22 @@ textarea { min-height: 84px; resize: vertical; } input:focus, select:focus, text
 .account-filter-panel { display: grid; grid-template-columns: minmax(240px,1fr) repeat(3,minmax(135px,.35fr)); align-items: end; gap: 10px; margin-bottom: 18px; padding: 17px; border: 1px solid var(--line); border-radius: 20px; background: white; box-shadow: var(--shadow-sm); }.accounts-layout { display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 16px; align-items: start; }.accounts-table-card, .account-detail-card { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: white; box-shadow: var(--shadow-sm); }.accounts-table-head { display: flex; justify-content: space-between; padding: 17px 19px; border-bottom: 1px solid var(--line); }.accounts-table-head strong { font-size: 13px; }.accounts-table-head span { color: var(--muted); font-size: 10px; }.accounts-table-scroll { overflow-x: auto; }.accounts-table { width: 100%; border-collapse: collapse; }.accounts-table th, .accounts-table td { padding: 13px 17px; border-bottom: 1px solid var(--line); text-align: left; font-size: 10px; }.accounts-table th { color: var(--muted); background: var(--surface-soft); font-size: 8px; }.accounts-table tbody tr { cursor: pointer; transition: .15s ease; }.accounts-table tbody tr:hover, .accounts-table tbody tr.selected { background: var(--green-50); }.accounts-table td strong, .accounts-table td small { display: block; }.accounts-table td small { margin-top: 2px; color: var(--muted); font-size: 8px; }.account-status { display: inline-flex; padding: 4px 7px; border-radius: 999px; font-size: 8px; }.account-status.active { color: var(--green-800); background: var(--green-100); }.account-status.inactive { color: var(--danger); background: #FBEDEA; }.account-detail-card { padding: 22px; text-align: center; }.account-detail-card h2 { margin: 13px 0 2px; }.account-detail-card > p { color: var(--muted); font-size: 10px; }.account-detail-list { margin: 18px 0; border-top: 1px solid var(--line); }.account-detail-list > div { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); text-align: left; }.account-detail-list span { color: var(--muted); font-size: 9px; }.account-detail-list strong { font-size: 9px; text-align: right; }.account-metric-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }.account-metric-grid article { padding: 11px 5px; border-radius: 12px; background: var(--surface-soft); }.account-metric-grid strong, .account-metric-grid small { display: block; }.account-metric-grid strong { font-size: 18px; }.account-metric-grid small { color: var(--muted); font-size: 7px; }.account-security-note { display: block; margin-top: 15px; color: var(--muted); font-size: 8px; line-height: 1.6; }
 
 footer { display: flex; justify-content: space-between; gap: 20px; width: min(1180px, calc(100% - 36px)); margin: 0 auto; padding: 24px 0 34px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; } footer strong { color: var(--green-800); }
-.app-footer { flex-wrap: wrap; align-items: flex-start; gap: 12px 24px; font-size: 12px; line-height: 1.8; }
+.app-footer { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-block: 12px; font-size: 12px; line-height: 1.6; text-align: center; }
 .app-footer > div { min-width: 0; }
 .app-footer span { display: block; margin: 0; }
-.app-footer .footer-attribution { text-align: right; }
+.app-footer .footer-school { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.app-footer .footer-version { padding: 1px 7px; border-radius: 999px; background: var(--green-50); color: var(--green-700); font-size: 10px; line-height: 1.6; }
+.app-footer .footer-attribution { font-size: 11px; text-align: center; }
+.app-footer .footer-print-version { display: none; }
 @media (max-width: 700px) {
-  .app-footer { display: flex; flex-direction: column; padding-block: 18px; }
-  .app-footer .footer-attribution { text-align: left; }
+  .app-footer { display: flex; padding-block: 12px; }
 }
 @media print {
   .app-shell { padding-bottom: 0 !important; }
   .app-footer { position: static; width: 100%; margin: 4mm 0 0; padding: 2mm 0 0; border: 0; font-size: 8pt; break-inside: avoid; }
   .app-footer .footer-school { display: none; }
   .app-footer .footer-attribution { display: flex; flex-wrap: wrap; gap: 0 4mm; text-align: left; }
+  .app-footer .footer-print-version { display: block; }
   .app-footer span { margin: 0; }
   .mobile-nav { display: none !important; }
 }
