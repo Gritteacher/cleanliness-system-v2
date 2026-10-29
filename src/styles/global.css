@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap');
 
 :root {
   --green-900: #183D2A;
@@ -28,7 +28,8 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--canvas); color: var(--ink); font-family: 'Sarabun', sans-serif; font-weight: 300; -webkit-font-smoothing: antialiased; }
-h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 500; }
+h1, h2, h3, h4, h5, h6 { font-weight: 700; }
+strong, b, th { font-weight: 500; }
 button, input, select, textarea { font: inherit; }
 /* Sarabun needs room for Thai vowels and tone marks, including wrapped labels. */
 body { line-height: 1.75; letter-spacing: normal; }
@@ -44,7 +45,7 @@ h1, h2, h3, p { margin-top: 0; }
 .brand-lockup { border: 0; background: transparent; padding: 0; display: flex; align-items: center; gap: 11px; color: var(--ink); text-align: left; }
 .brand-mark { width: 42px; height: 42px; flex: 0 0 auto; border-radius: 14px; display: grid; place-items: center; color: var(--green-900); background: var(--yellow-300); box-shadow: inset 0 0 0 1px rgba(24, 61, 42, .08); }
 .brand-mark.large { width: 54px; height: 54px; border-radius: 18px; }
-.brand-lockup strong { display: block; font-size: 17px; line-height: 1.5; letter-spacing: normal; }
+.brand-lockup strong { display: block; font-size: 17px; font-weight: 700; line-height: 1.5; letter-spacing: normal; }
 .brand-lockup small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
 .brand-lockup > span:last-child { min-width: 0; }
 @media (max-width: 700px) {

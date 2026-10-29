@@ -199,7 +199,7 @@
 .practice-form-dialog::backdrop { background: rgba(12,29,20,.55); }
 .practice-modal-header { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--green-50); }
 .practice-modal-header > div { min-width: 0; }
-.practice-modal-header h2 { margin: 0; font-size: 18px; font-weight: 500; line-height: 1.6; }
+.practice-modal-header h2 { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.6; }
 .practice-modal-header p { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 .practice-modal-close { flex: 0 0 44px; width: 44px; height: 44px; min-height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: white; color: var(--green-800); font-size: 28px; line-height: 1; cursor: pointer; }
 .practice-modal-close:focus-visible { outline: 3px solid var(--green-600); outline-offset: 2px; }
