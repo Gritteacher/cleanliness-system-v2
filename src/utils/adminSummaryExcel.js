@@ -1,3 +1,5 @@
+import { applyWorkbookAttribution } from './exportAttribution.js';
+
 const COLORS = {
   green900: '183D2A',
   green700: '356B4C',
@@ -229,6 +231,7 @@ export async function createAdminSummaryWorkbook(options) {
   const { dailyRows, summaryRows } = normalizeData(options.teams, options.scores);
   if (options.includeSummary) addSummarySheet(workbook, options, summaryRows);
   if (options.includeDaily) addDailySheet(workbook, options, options.teams, dailyRows);
+  applyWorkbookAttribution(workbook);
   return workbook;
 }
 

@@ -10,3 +10,12 @@
 [functions."create-practice-pdf"]
   external_node_modules = ["@sparticuz/chromium"]
   included_files = ["netlify/assets/**", "node_modules/@sparticuz/chromium/bin/**"]
+
+[functions."create-public-pdf"]
+  included_files = ["netlify/assets/**"]
+
+[functions."send-public-pdf-daily"]
+  included_files = ["netlify/assets/**"]
+
+[functions."send-public-pdf-background"]
+  included_files = ["netlify/assets/**"]
