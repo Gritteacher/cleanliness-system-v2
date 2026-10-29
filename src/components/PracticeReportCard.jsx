@@ -10,7 +10,7 @@ export default function PracticeReportCard({ report, onPhoto, emptyText = 'ย�
   const active = photos[index];
   const teachers = reportTeacherNames(report);
   const time = report ? new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(report.created_at)) : '';
-  return <article className="practice-report-card">
+  return <article className={`practice-report-card${!report ? ' practice-report-card-empty' : ''}`}>
     {active ? <button className="practice-report-cover" type="button" onClick={() => onPhoto(active.full)} aria-label={`ดูภาพรายงานของ ${teachers.join(' และ ')} รูปที่ ${index + 1}`}>
       {failed !== active.full ? <img src={active.thumbnail} alt={`ภาพการปฏิบัติเวร รูปที่ ${index + 1}`} loading="lazy" onError={() => setFailed(active.full)} /> : <span className="practice-cover-placeholder"><Icon name="image" size={30} /><span>เปิดภาพตัวอย่างไม่ได้ · กดดูภาพใหญ่</span></span>}
       <span className="practice-cover-count">{index + 1}/{photos.length}</span><span className="practice-cover-expand"><Icon name="image" size={14} /> ดูภาพใหญ่</span>
