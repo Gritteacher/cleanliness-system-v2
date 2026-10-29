@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { loadPracticeReports } from '../services/practiceService.js';
 import { reportTeacherNames } from '../utils/practiceTeachers.js';
+import { applyWorkbookAttribution } from '../utils/exportAttribution.js';
 import { PRACTICE_START, PRACTICE_END, PRACTICE_TEAMS, practiceSchedule } from '../utils/practiceSchedule.js';
 
 export default function PracticeSummary({ navigate }) {
@@ -20,6 +21,7 @@ export default function PracticeSummary({ navigate }) {
     for(const r of rows)sheet.addRow({date:new Date(r.duty_date+'T00:00:00Z'),team:PRACTICE_TEAMS.find(t=>t.id===r.team_id)?.name||r.team_id,teacher:reportTeacherNames(r).join('\n'),time:practiceSchedule(r.duty_date).label,outcome:r.outcome==='normal'?'ปกติ':'มีเหตุการณ์',details:r.details,action:r.action_taken,photos:r.photos.map(p=>p.full).join('\n'),created:new Intl.DateTimeFormat('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'short',timeStyle:'medium'}).format(new Date(r.created_at)),id:r.id});
     sheet.getColumn('date').numFmt='dd/mm/yyyy';sheet.autoFilter={from:'A1',to:'J1'};
     sheet.eachRow((row,n)=>{row.font={name:'Sarabun',size:12,...(n===1?{bold:true,color:{argb:'FFFFFFFF'}}:{})};row.alignment={vertical:'top',wrapText:true};if(n===1){row.height=30;row.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF24563A'}};});}});
+    applyWorkbookAttribution(book);
     const blob=new Blob([await book.xlsx.writeBuffer()],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`practice-reports-${start}-${end}.xlsx`;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
   }catch{setError('ส่งออกไม่สำเร็จ กรุณาลองอีกครั้ง');}finally{setExporting(false);}}
   return <section className="page-container practice-page"><button className="practice-back" type="button" onClick={()=>navigate('/practice')}>← กลับรายงานเวร</button><header className="practice-page-heading"><span className="eyebrow">ADMIN · PRACTICE REPORTS</span><h1>สรุปรายงานเวรฝึกซ้อม</h1><p>นับวันรายงานแยกแต่ละสี ไม่รวมวันที่ 7 พฤศจิกายนที่งดซ้อม</p></header>

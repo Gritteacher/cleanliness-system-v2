@@ -5,6 +5,7 @@ import chromium from '@sparticuz/chromium';
 import { chromium as playwrightChromium } from 'playwright-core';
 import { practicePdfOptions } from '../../../src/utils/practicePdfOptions.js';
 import { practicePdfHtml, safePracticePhoto } from './practicePdfLayout.mjs';
+import { pdfAttributionFooter } from './pdfAttribution.mjs';
 
 export async function loadPublishedPracticeReports(client, options) {
   const result = [];
@@ -87,7 +88,8 @@ export async function createPracticePdf(input, test = {}) {
     // Fail visibly instead of producing clipped or unreadable summaries.
     const overflow=await page.evaluate(()=>[...document.querySelectorAll('.team-card')].some(card=>{const body=card.querySelector('.card-body');return body.scrollHeight>body.clientHeight+2 || body.getBoundingClientRect().bottom>card.getBoundingClientRect().bottom+1;}));
     if(overflow)throw new Error('รายละเอียดรายงานยาวเกินการจัดหน้า กรุณาส่งออกเฉพาะสีที่ต้องการ');
-    const pdf=Buffer.from(await page.pdf({format:'A4',landscape:false,printBackground:true,preferCSSPageSize:true,displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate:'<div style="width:100%;text-align:right;padding:0 10mm;font:8px sans-serif;color:#7b8a80">Clean &amp; Care · <span class="pageNumber"></span> / <span class="totalPages"></span></div>',timeout:20000}));
+    const footerTemplate=await pdfAttributionFooter(page);
+    const pdf=Buffer.from(await page.pdf({format:'A4',landscape:false,printBackground:true,preferCSSPageSize:true,displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate,timeout:20000}));
     if(pdf.length>4400000)throw new Error('ไฟล์ PDF มีขนาดใหญ่ กรุณาเลือกช่วงวันที่สั้นลง');
     return pdf;
   }finally{await browser?.close();}

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import chromium from '@sparticuz/chromium';
 import { chromium as playwrightChromium } from 'playwright-core';
+import { pdfAttributionFooter } from './pdfAttribution.mjs';
 
 const USERNAME_EMAIL_DOMAIN = 'tsn.local';
 
@@ -140,10 +141,14 @@ export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}) 
 
     await page.emulateMedia({ media: 'print' });
 
+    const footerTemplate = await pdfAttributionFooter(page);
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
       preferCSSPageSize: true,
+      displayHeaderFooter: true,
+      headerTemplate: '<span></span>',
+      footerTemplate,
       margin: {
         top: '10mm',
         right: '8mm',
