@@ -19,7 +19,7 @@ export default function PracticeReportCard({ report, onPhoto, emptyText = 'ย�
     <div className="practice-report-card-body">
       <div className="practice-report-card-meta"><span className="practice-teacher-label"><Icon name="user" size={16} /> ครูผู้ปฏิบัติเวร</span><span className={`practice-outcome ${report?.outcome || ''}`}>{!report ? 'รอข้อมูลเวร' : report.outcome === 'normal' ? 'ปกติ' : 'มีเหตุการณ์'}</span></div>
       {teachers.length ? <ul className="practice-teacher-names">{teachers.map((name, i) => <li key={`${i}-${name}`}>{name}</li>)}</ul> : <p className="practice-report-awaiting">{emptyText}</p>}
-      {report && <><div className="practice-report-description"><small>รายละเอียดการดูแล</small><p>{report.details}</p>{report.action_taken && <><small>การดำเนินการ</small><p>{report.action_taken}</p></>}</div><div className="practice-report-card-time"><Icon name="calendar" size={14} /><span>ส่งเมื่อ {time} น.</span></div><small className="practice-reference">เลขอ้างอิง {report.id}</small></>}
+      {report && <><div className="practice-report-description"><small>รายละเอียดการดูแล</small><p>{report.details}</p>{report.action_taken && <><small>การดำเนินการ</small><p>{report.action_taken}</p></>}</div><div className="practice-report-card-time"><Icon name="calendar" size={14} /><span>ส่งเมื่อ {time} น.</span></div></>}
     </div>
   </article>;
 }

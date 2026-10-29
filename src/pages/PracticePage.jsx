@@ -38,12 +38,11 @@ function TeamForm({ team, draft, update, date, enabled, onSent, lock, unlock }) 
       const names = enteredTeacherNames(draft.names);
       const report = await sendPracticeReport({ id: draft.id, duty_date: date, team_id: team.id, teacher_name: names[0], teacher_names: names, outcome: draft.outcome, details: draft.details.trim(), action_taken: draft.outcome === 'incident' ? draft.action.trim() : '', confirmed: draft.confirmed }, draft.photos);
       draft.photos.forEach(p => URL.revokeObjectURL(p.preview));
-      update({ ...newDraft(), success: `ส่งรายงานสำเร็จ · เลขอ้างอิง ${report.id}` }); onSent(report);
+      update({ ...newDraft(), success: 'ส่งรายงานสำเร็จแล้ว' }); onSent(report);
     } catch (error) { update({ error: error.message }); }
     finally { update({ busy: false }); unlock(); }
   }
   return <form className="practice-form" onSubmit={submit}>
-    <h3><Icon name="clipboard" size={18} /> กรอกข้อมูลการปฏิบัติเวร</h3>
     <fieldset disabled={!enabled || draft.busy || draft.preparing}>
       <div className="practice-teacher-fields"><div className="practice-teacher-fields-heading"><strong>ชื่อ–นามสกุลครูผู้ปฏิบัติเวร</strong><small>ระบุได้สูงสุด 3 คน</small></div>{draft.names.map((name, i) => <label key={i}>ครูผู้ปฏิบัติเวร คนที่ {i + 1}{i === 0 ? ' *' : ' (ถ้ามี)'}<input required={i === 0} minLength={2} maxLength={120} autoComplete={i === 0 ? 'name' : 'off'} value={name} placeholder={`ชื่อ–นามสกุลครู คนที่ ${i + 1}`} onInput={e => update({ names: draft.names.map((old, n) => n === i ? e.target.value : old) })} /></label>)}{draft.names.length < 3 ? <button type="button" className="practice-add-teacher" onClick={() => update({ names: [...draft.names, ''] })}><Icon name="plus" size={16} /> เพิ่มครูคนที่ 3</button> : <button type="button" className="practice-add-teacher" onClick={() => update({ names: draft.names.slice(0, 2) })}>นำช่องครูคนที่ 3 ออก</button>}</div>
       <div className="practice-outcome-options" role="group" aria-label="ผลการดูแล">{[['normal', 'ปกติ'], ['incident', 'มีเหตุการณ์']].map(([value, label]) => <label key={value} className={draft.outcome === value ? 'selected' : ''}><input type="radio" name={`outcome-${team.id}`} checked={draft.outcome === value} onChange={() => update({ outcome: value })} />{label}</label>)}</div>
@@ -96,7 +95,7 @@ export default function PracticePage({ navigate, isAdmin = false }) {
         <header className="practice-team-header"><div><i /><div><small>{team.color}</small><h2>คณะ{team.name}</h2></div></div><span className={`practice-team-status ${teamReports.length ? 'done' : ''}`}>{!schedule.enabled ? 'งดซ้อม' : loading ? 'กำลังโหลด…' : error ? 'ยังตรวจสอบไม่ได้' : teamReports.length ? `รายงานแล้ว ${teamReports.length} รายการ` : 'ยังไม่รายงาน'}</span></header>
         <div className="practice-team-body practice-photo-card-layout">
           <section className="practice-history" aria-label={`รายงาน ${team.color}`}>{loading ? <p className="practice-reports-loading">กำลังโหลดรายงาน…</p> : teamReports.length ? teamReports.map(report => <PracticeReportCard key={report.id} report={report} onPhoto={setPhoto} />) : <PracticeReportCard onPhoto={setPhoto} emptyText={schedule.enabled ? 'ยังไม่มีรายงานของคณะสีนี้' : schedule.label} />}</section>
-          {draft && schedule.enabled && <PracticeFormPanel key={key} id={`practice-form-${key}`} color={team.color} busy={draft.busy || draft.preparing}><TeamForm team={team} date={date} draft={draft} enabled={schedule.enabled} update={patch => setDrafts(old => ({ ...old, [key]: { ...old[key], ...patch } }))} lock={() => setActive(v => v + 1)} unlock={() => setActive(v => Math.max(0, v - 1))} onSent={report => { setReports(old => [report, ...old.filter(r => r.id !== report.id)].sort((a, b) => b.created_at.localeCompare(a.created_at))); }} /></PracticeFormPanel>}
+          {draft && schedule.enabled && <PracticeFormPanel key={key} id={`practice-form-${key}`} color={team.color} subtitle={`คณะ${team.name} · ${practiceDateLabel(date)}`} busy={draft.busy || draft.preparing}><TeamForm team={team} date={date} draft={draft} enabled={schedule.enabled} update={patch => setDrafts(old => ({ ...old, [key]: { ...old[key], ...patch } }))} lock={() => setActive(v => v + 1)} unlock={() => setActive(v => Math.max(0, v - 1))} onSent={report => { setReports(old => [report, ...old.filter(r => r.id !== report.id)].sort((a, b) => b.created_at.localeCompare(a.created_at))); }} /></PracticeFormPanel>}
         </div>
       </article>;
     })}</div>

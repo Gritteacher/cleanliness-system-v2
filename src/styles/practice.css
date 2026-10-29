@@ -160,3 +160,61 @@
   .practice-report-card-empty .practice-report-cover { min-height: 120px; padding: 16px; }
   .practice-team-list { gap: 14px; }
 }
+
+/* Mobile-first practice cards and a native, focus-contained report popup. */
+.practice-page .practice-team-list { grid-template-columns: minmax(0,1fr); gap: 12px; align-items: start; }
+.practice-page .practice-team-card { border-radius: 16px; scroll-margin-top: 78px; }
+.practice-page .practice-team-header { padding: 10px 14px; gap: 8px; }
+.practice-page .practice-team-header > div { gap: 8px; }
+.practice-page .practice-team-header i { height: 32px; width: 4px; }
+.practice-page .practice-team-header h2 { font-size: 17px; line-height: 1.6; }
+.practice-page .practice-team-status { font-size: 11px; line-height: 1.6; padding: 4px 8px; }
+.practice-page .practice-report-cover { aspect-ratio: 16/9; max-height: 200px; }
+.practice-page .practice-report-card-body { padding: 12px 14px; }
+.practice-page .practice-teacher-names li { font-size: 17px; line-height: 1.7; }
+.practice-page .practice-report-card-meta { margin-bottom: 6px; gap: 6px; }
+.practice-page .practice-report-description { margin-top: 8px; padding-top: 8px; }
+.practice-page .practice-report-description p { font-size: 14px; line-height: 1.8; }
+.practice-page .practice-report-card-time { margin-top: 8px; font-size: 11px; }
+.practice-page .practice-report-card-empty .practice-report-cover { display: flex; flex-direction: row; gap: 10px; min-height: 64px; height: auto; padding: 12px 14px; aspect-ratio: auto; font-size: 13px; }
+.practice-page .practice-report-card-empty .practice-cover-empty-icon { width: 32px; height: 32px; border-radius: 10px; }
+.practice-page .practice-report-card-empty .practice-cover-empty-icon svg { width: 20px; height: 20px; }
+.practice-page .practice-report-card-empty .practice-report-card-meta { display: none; }
+.practice-page .practice-report-card-empty .practice-report-card-body { padding: 10px 14px; }
+.practice-page .practice-report-awaiting { font-size: 13px; line-height: 1.7; }
+.practice-page .practice-form-panel { padding: 10px 14px; }
+.practice-page .practice-form-toggle { min-height: 44px; padding: 8px 12px; font-size: 14px; line-height: 1.7; border-radius: 10px; }
+.practice-page .practice-report-thumbs { grid-template-columns: repeat(6,minmax(0,1fr)); padding: 8px 12px 0; gap: 6px; }
+.practice-page .practice-report-thumbs button { min-height: 44px; }
+.practice-page .practice-report-hero { padding: 16px; margin-bottom: 12px; border-radius: 16px; }
+.practice-page .practice-report-hero h1 { font-size: 22px; line-height: 1.6; margin-bottom: 6px; }
+.practice-page .practice-report-hero .eyebrow { margin-bottom: 6px; font-size: 10px; }
+.practice-page .practice-report-hero p { margin-top: 8px; }
+.practice-page .practice-date-panel { padding: 14px; gap: 10px; border-radius: 16px; }
+.practice-page .practice-team-jumps { margin-block: 12px; }
+.practice-form-dialog { position: fixed; inset: auto 0 0; width: 100%; max-width: 100%; max-height: 92vh; max-height: 92dvh; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 20px 20px 0 0; background: white; color: var(--ink); box-shadow: 0 -12px 50px rgba(12,29,20,.2); overflow: hidden; font-family: inherit; font-weight: 300; line-height: 1.7; letter-spacing: normal; }
+.practice-form-dialog[open] { display: flex; flex-direction: column; }
+.practice-form-dialog::backdrop { background: rgba(12,29,20,.55); }
+.practice-modal-header { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--green-50); }
+.practice-modal-header > div { min-width: 0; }
+.practice-modal-header h2 { margin: 0; font-size: 18px; font-weight: 500; line-height: 1.6; }
+.practice-modal-header p { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.practice-modal-close { flex: 0 0 44px; width: 44px; height: 44px; min-height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: white; color: var(--green-800); font-size: 28px; line-height: 1; cursor: pointer; }
+.practice-modal-close:focus-visible { outline: 3px solid var(--green-600); outline-offset: 2px; }
+.practice-modal-close:disabled { opacity: .5; cursor: wait; }
+.practice-modal-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px 16px max(20px,env(safe-area-inset-bottom)); }
+.practice-modal-body .practice-form { padding: 0; border: 0; }
+.practice-modal-body .practice-form fieldset { gap: 14px; }
+.practice-modal-body .practice-teacher-fields { gap: 10px; }
+.practice-modal-body .practice-add-teacher { min-height: 44px; }
+@media (min-width: 640px) {
+  .practice-form-dialog { inset: 0; margin: auto; width: min(560px,calc(100% - 48px)); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); border-radius: 20px; }
+  .practice-modal-header { padding: 16px 20px; }
+  .practice-modal-body { padding: 20px; }
+}
+@media (min-width: 768px) {
+  .practice-page .practice-team-list { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+  .practice-page .practice-report-cover { max-height: 240px; }
+  .practice-page .practice-report-hero { padding: 24px; }
+  .practice-page .practice-report-hero h1 { font-size: 28px; }
+}
