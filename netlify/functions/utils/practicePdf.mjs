@@ -9,7 +9,7 @@ import { practicePdfHtml, safePracticePhoto } from './practicePdfLayout.mjs';
 export async function loadPublishedPracticeReports(client, options) {
   const result = [];
   for (let offset=0; ; offset+=500) {
-    const { data, error } = await client.from('cs_practice_reports').select('id,duty_date,team_id,teacher_name,teacher_names,outcome,details,action_taken,photos,created_at').eq('status','published').gte('duty_date',options.start).lte('duty_date',options.end).in('team_id',options.teamIds).order('duty_date').order('created_at',{ascending:false}).order('id').range(offset,offset+499).abortSignal(AbortSignal.timeout(10000));
+    const { data, error } = await client.from('cs_practice_reports').select('id,duty_date,team_id,teacher_name,teacher_names,outcome,details,action_taken,photos,created_at').eq('status','published').is('deleted_at',null).gte('duty_date',options.start).lte('duty_date',options.end).in('team_id',options.teamIds).order('duty_date').order('created_at',{ascending:false}).order('id').range(offset,offset+499).abortSignal(AbortSignal.timeout(10000));
     if (error) throw new Error('โหลดรายงานไม่สำเร็จ กรุณาลองอีกครั้ง');
     result.push(...data);
     if (result.length>2000) throw new Error('มีรายงานจำนวนมาก กรุณาเลือกช่วงวันที่สั้นลง');
@@ -60,7 +60,7 @@ export async function createPracticePdf(input, test = {}) {
   let browser;
   try {
     browser=await playwrightChromium.launch({executablePath:test.executablePath || await chromium.executablePath(),args:test.executablePath?[]:chromium.args,headless:true});
-    const page=await browser.newPage({viewport:{width:1123,height:794},javaScriptEnabled:false});
+    const page=await browser.newPage({viewport:{width:794,height:1123},javaScriptEnabled:false});
     await page.route('**/*',route=>route.request().url().startsWith('data:')?route.continue():route.abort());
     await page.setContent(html,{waitUntil:'load',timeout:20000});
     await page.evaluate(async()=>{
@@ -85,9 +85,9 @@ export async function createPracticePdf(input, test = {}) {
     });
     await page.emulateMedia({media:'print'});
     // Fail visibly instead of producing clipped or unreadable summaries.
-    const overflow=await page.evaluate(()=>[...document.querySelectorAll('.team-card')].some(card=>card.querySelector('.card-body').getBoundingClientRect().bottom>card.getBoundingClientRect().bottom+1));
+    const overflow=await page.evaluate(()=>[...document.querySelectorAll('.team-card')].some(card=>{const body=card.querySelector('.card-body');return body.scrollHeight>body.clientHeight+2 || body.getBoundingClientRect().bottom>card.getBoundingClientRect().bottom+1;}));
     if(overflow)throw new Error('รายละเอียดรายงานยาวเกินการจัดหน้า กรุณาส่งออกเฉพาะสีที่ต้องการ');
-    const pdf=Buffer.from(await page.pdf({format:'A4',landscape:true,printBackground:true,preferCSSPageSize:true,displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate:'<div style="width:100%;text-align:right;padding:0 10mm;font:8px sans-serif;color:#7b8a80">Clean &amp; Care · <span class="pageNumber"></span> / <span class="totalPages"></span></div>',timeout:20000}));
+    const pdf=Buffer.from(await page.pdf({format:'A4',landscape:false,printBackground:true,preferCSSPageSize:true,displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate:'<div style="width:100%;text-align:right;padding:0 10mm;font:8px sans-serif;color:#7b8a80">Clean &amp; Care · <span class="pageNumber"></span> / <span class="totalPages"></span></div>',timeout:20000}));
     if(pdf.length>4400000)throw new Error('ไฟล์ PDF มีขนาดใหญ่ กรุณาเลือกช่วงวันที่สั้นลง');
     return pdf;
   }finally{await browser?.close();}

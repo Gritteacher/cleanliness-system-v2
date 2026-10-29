@@ -1,0 +1,7 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><title>PDF and PNG export verification</title>
+<style>body{font:16px/1.8 sans-serif;max-width:720px;margin:20px auto;padding:16px}img{max-width:100%;max-height:620px}pre{white-space:pre-wrap}</style>
+<h1>ทดสอบภาพจาก PDF แนวตั้ง</h1><p>ประมวลผลบนเครื่อง ไม่บันทึกข้อมูลรายงาน</p><label>เลือก PDF ทดสอบ<input type="file" accept="application/pdf"></label><pre role="status">รอเลือกไฟล์</pre><a hidden>ดาวน์โหลดผลลัพธ์</a><p><img alt="ภาพที่ส่งออกจาก PDF"></p>
+<script type="module">
+import {practicePdfToImages} from '/src/utils/practiceImageExport.js';
+document.querySelector('input').onchange=async event=>{const status=document.querySelector('pre');try{const result=await practicePdfToImages(event.target.files[0],'practice-test',(number,total)=>status.textContent=`กำลังสร้างภาพ ${number}/${total}`);status.textContent=JSON.stringify({format:result.extension,pages:result.pages,bytes:result.blob.size});const url=URL.createObjectURL(result.blob),link=document.querySelector('a');link.href=url;link.download=`practice-test.${result.extension}`;link.hidden=false;if(result.extension==='png')document.querySelector('img').src=url;}catch(error){status.textContent='ERROR: '+error.message;}};
+</script></html>

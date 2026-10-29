@@ -1,13 +1,22 @@
 # Color-team practice duty reports
 
-## Public PDF export
+## Public PDF and image export
 
 - The public `#/practice` page offers PDF export without login: single day or inclusive date range, one or several teams.
 - `create-practice-pdf` reads published reports through the anon client/RLS only. It does not accept report content from callers and performs no database writes. Request validation, public-storage URL allowlist, bounded image reads, escaped text, blocked renderer networking and per-IP rate limits protect the public endpoint.
-- A4 landscape daily summary shows every selected team on one page, including explicit missing/canceled states. Latest report is featured; duplicate reports and long fields are preserved in full appendices. Images use embedded thumbnails with clickable original links. No internal report reference is shown.
+- A4 portrait daily summary shows all five teams as horizontal rows on one page, including explicit missing/canceled states. Latest report is featured; duplicate reports and long fields are preserved in full appendices. Images use embedded thumbnails with clickable original links. No internal report reference is shown.
+- PNG export renders the generated PDF itself using a lazy local PDF.js worker, so every page matches the PDF layout, including appendices. One page downloads as PNG; multiple pages download as a ZIP of numbered PNG files. Canvas memory is released after each page. No report data is sent to an external conversion service.
 - Sarabun regular/medium fonts are bundled under `netlify/assets` with OFL license, so PDFs do not depend on external font services. Chromium binary and fonts must be included in the function bundle.
 - Exports over 4.4 MB return a visible request to narrow the range instead of silently dropping data. The PDF contains current public data at generation time.
 - QA: `npm test`; `node tests/verifyPracticePdf.mjs <private-access-config.json> <sample.jpg>` (set `PDF_CHROME_PATH` for a non-default local Chrome path), then inspect rendered pages with Poppler. Never commit the private access config or generated QA PDFs.
+
+## Admin practice report management
+
+- Existing active Admin accounts can add/edit reports (date, team, 1–3 teachers, details, outcome and 1–6 photos), soft-delete and restore. No account roles are changed.
+- `practice-admin` verifies the bearer session with Auth, then reads the current active admin role from `cs_profiles`. No user metadata or caller-provided role flag is trusted. Validated uploads use service-only Storage; mutations use the user's own JWT and a SECURITY INVOKER RPC behind admin-only RLS.
+- Column-scoped INSERT/UPDATE grants and RLS deny other signed-in roles and anonymous callers. No hard DELETE privilege is granted. Deleted reports are excluded from public reads and all exports; original images are retained for recovery.
+- `updated_at` with a database trigger and row lock provides optimistic concurrency. Stale changes return a visible conflict instead of overwriting a newer report. Original `created_at` and ID are retained.
+- Tests: `tests/practiceAdminSecurity.sql` runs synthetic CRUD and role checks inside a transaction and rolls back all writes. `node tests/practiceAdminApi.mjs <private-access-config.json>` checks anonymous/forged-token denial without creating data. Never elevate an account or mint a user token for testing.
 
 - Production routes: `#/` system chooser; `#/cleanliness` original system; `#/practice` public practice reports; `#/practice/summary` admin summary/export.
 - Reporting period: 2–30 November 2026 inclusive; November 7 cancelled. 28 reportable days × 5 teams = 140 required color/day slots. Multiple teacher reports count as one completed color/day slot.

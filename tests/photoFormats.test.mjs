@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { isHeicPhoto, photoExtension, decodeUploadPhoto } from '../src/utils/photoInput.js';
 import { photoPreviewUrl } from '../src/utils/photoCompression.js';
-import { validatedPhotoType } from '../supabase/functions/practice-report/photoValidation.js';
+import { validatedPhotoType } from '../supabase/functions/_shared/photoValidation.js';
 
 test('HEIC/HEIF recognizes MIME, uppercase extensions and missing MIME headers', async () => {
   for (const file of [new File(['data'],'photo.HEIC'),new File(['data'],'photo.heif'),new File(['data'],'image',{type:'image/heic'}),new File(['0000ftypheic0000'],'image')]) assert.equal(await isHeicPhoto(file),true);
