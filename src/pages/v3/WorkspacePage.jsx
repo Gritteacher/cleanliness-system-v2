@@ -221,9 +221,9 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
         <small>{item.status === 'error' ? 'ไม่สำเร็จ' : item.status === 'saved' ? 'เสร็จแล้ว' : 'กำลังส่ง'}</small>
       </span>)}</div>
       {editable ? <div className="photo-upload-actions">
-        <label className="photo-upload-button"><Icon name="image" size={16} /> เลือกรูปจากเครื่อง<input type="file" accept="image/*" multiple aria-label="เลือกรูปจากเครื่อง" onChange={uploadPhotos} disabled={photoBusy} /></label>
-        <label className="photo-upload-button camera"><Icon name="camera" size={16} /> ถ่ายรูป<input type="file" accept="image/*" capture="environment" aria-label="ถ่ายรูป" onChange={uploadPhotos} disabled={photoBusy} /></label>
-        <small>{photoBusy ? 'กำลังย่อและอัปโหลดทีละรูป…' : 'ย่อรูปอัตโนมัติ · รูปใหญ่ประมาณ 300 KB'}</small>
+        <label className="photo-upload-button"><Icon name="image" size={16} /> เลือกรูปจากเครื่อง<input type="file" accept="image/*,.heic,.heif" multiple aria-label="เลือกรูปจากเครื่อง" onChange={uploadPhotos} disabled={photoBusy} /></label>
+        <label className="photo-upload-button camera"><Icon name="camera" size={16} /> ถ่ายรูป<input type="file" accept="image/*,.heic,.heif" capture="environment" aria-label="ถ่ายรูป" onChange={uploadPhotos} disabled={photoBusy} /></label>
+        <small>{photoBusy ? 'กำลังแปลง ย่อ และอัปโหลดทีละรูป…' : 'ย่อรูปอัตโนมัติ · HEIC/HEIF แปลงเป็น JPG'}</small>
       </div> : <small>ปิดการแก้ไขแล้ว</small>}
     </div>
 

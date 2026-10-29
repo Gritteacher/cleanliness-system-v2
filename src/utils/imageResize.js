@@ -1,4 +1,8 @@
-export function resizeImage(file, options = {}) {
+import { decodeUploadPhoto } from './photoInput.js';
+
+export async function resizeImage(file, options = {}) {
+  if (!file) return { image: '', thumb: '' };
+  const { image: decoded } = await decodeUploadPhoto(file);
   const maxSize = options.maxSize || 1280;
   const quality = options.quality || 0.78;
   const mimeType = options.mimeType || 'image/jpeg';
@@ -9,12 +13,8 @@ export function resizeImage(file, options = {}) {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์รูปภาพได้'));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('ไม่สามารถประมวลผลรูปภาพได้'));
-      img.onload = () => {
+    const img = decoded;
+    try {
         const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
         const width = Math.round(img.width * ratio);
         const height = Math.round(img.height * ratio);
@@ -52,9 +52,7 @@ export function resizeImage(file, options = {}) {
         const thumb = thumbCanvas.toDataURL(mimeType, 0.7);
 
         resolve({ image, thumb });
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
+    } catch (error) { reject(error); }
+    finally { img.close?.(); }
   });
 }

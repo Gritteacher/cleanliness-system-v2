@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.2';
+import { validatedPhotoType } from './photoValidation.js';
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const url = Deno.env.get('SUPABASE_URL')!;
@@ -16,12 +17,11 @@ async function limitedBody(req: Request) {
   const bytes = new Uint8Array(size); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
   return new Response(bytes, { headers: { 'Content-Type': req.headers.get('content-type') || '' } }).formData();
 }
-async function webp(file: FormDataEntryValue | null, maxBytes: number) {
-  if (!(file instanceof File) || file.type !== 'image/webp' || !file.size || file.size > maxBytes) fail('รูปภาพไม่ถูกต้องหรือมีขนาดเกินกำหนด');
+async function uploadedPhoto(file: FormDataEntryValue | null, maxBytes: number) {
+  if (!(file instanceof File) || !['image/webp','image/jpeg'].includes(file.type) || !file.size || file.size > maxBytes) fail('รูปภาพไม่ถูกต้องหรือมีขนาดเกินกำหนด');
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const ascii = (start: number, end: number) => String.fromCharCode(...bytes.slice(start, end));
-  if (bytes.length < 20 || ascii(0,4) !== 'RIFF' || ascii(8,12) !== 'WEBP' || !['VP8 ','VP8L','VP8X'].includes(ascii(12,16))) fail('ไฟล์ไม่ใช่ภาพ WebP ที่รองรับ');
-  return bytes;
+  try { return { bytes, ...validatedPhotoType(bytes, file.type) }; }
+  catch { fail('ไฟล์ไม่ใช่ภาพ JPG หรือ WebP ที่รองรับ'); }
 }
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -43,8 +43,8 @@ Deno.serve(async req => {
     if (!['normal','incident'].includes(p.outcome) || (p.outcome === 'incident' && !p.action_taken)) fail('กรุณาระบุผลการดูแลและการดำเนินการ');
     if (p.confirmed !== true) fail('กรุณายืนยันความถูกต้องของข้อมูล');
     if (!Number.isInteger(p.photo_count) || p.photo_count < 1 || p.photo_count > 6) fail('กรุณาแนบภาพ 1–6 ภาพ');
-    const files: { full: Uint8Array; thumbnail: Uint8Array }[] = [];
-    for (let i=0;i<p.photo_count;i++) files.push({ full: await webp(form.get(`full${i}`),524288), thumbnail: await webp(form.get(`thumb${i}`),131072) });
+    const files = [];
+    for (let i=0;i<p.photo_count;i++) files.push({ full: await uploadedPhoto(form.get(`full${i}`),524288), thumbnail: await uploadedPhoto(form.get(`thumb${i}`),131072) });
     const { data: existing, error: lookupError } = await admin.from('cs_practice_reports').select(fields+',status').eq('id',p.id).maybeSingle();
     if (lookupError) throw lookupError;
     if (existing) { if (existing.status === 'published') { const { status: _, ...report } = existing; return reply({ report }); } fail('รายงานนี้กำลังประมวลผล กรุณารอสักครู่แล้วลองใหม่',409); }
@@ -61,8 +61,9 @@ Deno.serve(async req => {
     for(let i=0;i<files.length;i++) {
       const result={full:'',thumbnail:''};
       for(const variant of ['full','thumbnail'] as const) {
-        const path=`${p.duty_date}/${p.team_id}/${p.id}/${i}.${variant==='full'?'full':'thumb'}.webp`;
-        const {error}=await admin.storage.from(bucket).upload(path,files[i][variant],{contentType:'image/webp',cacheControl:'31536000',upsert:false});
+        const file=files[i][variant];
+        const path=`${p.duty_date}/${p.team_id}/${p.id}/${i}.${variant==='full'?'full':'thumb'}.${file.extension}`;
+        const {error}=await admin.storage.from(bucket).upload(path,file.bytes,{contentType:file.contentType,cacheControl:'31536000',upsert:false});
         if(error)throw error; uploaded.push(path); result[variant]=admin.storage.from(bucket).getPublicUrl(path).data.publicUrl;
       }
       photos.push(result);
