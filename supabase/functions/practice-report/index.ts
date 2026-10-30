@@ -34,7 +34,7 @@ Deno.serve(async req => {
     if (!/^2026-11-\d{2}$/.test(p.duty_date || '') || p.duty_date < '2026-11-02' || p.duty_date > '2026-11-30' || p.duty_date === '2026-11-07') fail('วันที่เลือกอยู่นอกช่วงฝึกซ้อมหรือเป็นวันงดซ้อม');
     if (!['maen','yaowaman','nipha','piyarat','phanu'].includes(p.team_id)) fail('คณะสีไม่ถูกต้อง');
     const names = p.teacher_names === undefined ? [p.teacher_name] : p.teacher_names;
-    if (!Array.isArray(names) || names.length < 1 || names.length > 3 || names.some(name => typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 120)) fail('กรุณาระบุชื่อครู 1–3 คน ชื่อละ 2–120 ตัวอักษร');
+    if (!Array.isArray(names) || names.length < 1 || names.length > 4 || names.some(name => typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 120)) fail('กรุณาระบุชื่อครู 1–4 คน ชื่อละ 2–120 ตัวอักษร');
     p.teacher_names = names.map(name => name.trim()); p.teacher_name = p.teacher_names[0];
     for (const [name, max, min] of [['teacher_name',120,2],['details',3000,1],['action_taken',2000,0]] as const) {
       if (typeof p[name] !== 'string' || p[name].trim().length < min || p[name].trim().length > max) fail('กรุณากรอกชื่อครูและรายละเอียดให้ครบถ้วนตามกำหนด');

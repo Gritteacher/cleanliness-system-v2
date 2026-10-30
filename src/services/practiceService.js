@@ -1,6 +1,14 @@
 import { supabase } from '../lib/supabase.js';
 import { photoExtension } from '../utils/photoInput.js';
 
+export async function loadPracticeRoster(date) {
+  if (!supabase) throw new Error('ยังไม่ได้เชื่อมต่อระบบตารางเวร');
+  const { data, error } = await supabase.from('cs_practice_duty_roster')
+    .select('duty_date,team_id,teacher_names').eq('duty_date', date).order('team_id');
+  if (error) throw new Error('โหลดรายชื่อครูตามตารางเวรไม่สำเร็จ');
+  return data;
+}
+
 export async function loadPracticeReports(date, endDate = date, deleted = false) {
   if (!supabase) throw new Error('ยังไม่ได้เชื่อมต่อระบบรายงาน กรุณาลองใหม่ภายหลัง');
   const results = [];
