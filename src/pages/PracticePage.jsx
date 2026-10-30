@@ -4,15 +4,15 @@ import PracticeReportCard from '../components/PracticeReportCard.jsx';
 import PracticeFormPanel from '../components/PracticeFormPanel.jsx';
 import PracticePdfExport from '../components/PracticePdfExport.jsx';
 import AdminPracticeEditor from '../components/AdminPracticeEditor.jsx';
-import { enteredTeacherNames } from '../utils/practiceTeachers.js';
+import { enteredTeacherNames, draftTeacherNames, applyRosterNames, MAX_PRACTICE_TEACHERS } from '../utils/practiceTeachers.js';
 import { bangkokDate } from '../services/v3Service.js';
-import { loadPracticeReports, sendPracticeReport, watchPracticeReports, managePracticeReport } from '../services/practiceService.js';
+import { loadPracticeReports, loadPracticeRoster, sendPracticeReport, watchPracticeReports, managePracticeReport } from '../services/practiceService.js';
 import { compressSubmissionPhoto } from '../utils/photoCompression.js';
 import { PRACTICE_START, PRACTICE_END, PRACTICE_TEAMS, practiceDefaultDate, practiceSchedule, practiceDateLabel } from '../utils/practiceSchedule.js';
 
-function newDraft() { return { id: crypto.randomUUID(), names: ['', ''], outcome: 'normal', details: '', action: '', confirmed: false, photos: [], busy: false, preparing: false, error: '', success: '' }; }
+function newDraft(names) { return { id: crypto.randomUUID(), names: draftTeacherNames(names), namesTouched: false, outcome: 'normal', details: '', action: '', confirmed: false, photos: [], busy: false, preparing: false, error: '', success: '' }; }
 
-function TeamForm({ team, draft, update, date, enabled, onSent, lock, unlock }) {
+function TeamForm({ team, draft, update, date, enabled, onSent, lock, unlock, assignedNames }) {
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   async function addPhotos(event) {
@@ -40,13 +40,13 @@ function TeamForm({ team, draft, update, date, enabled, onSent, lock, unlock }) 
       const names = enteredTeacherNames(draft.names);
       const report = await sendPracticeReport({ id: draft.id, duty_date: date, team_id: team.id, teacher_name: names[0], teacher_names: names, outcome: draft.outcome, details: draft.details.trim(), action_taken: draft.outcome === 'incident' ? draft.action.trim() : '', confirmed: draft.confirmed }, draft.photos);
       draft.photos.forEach(p => URL.revokeObjectURL(p.preview));
-      update({ ...newDraft(), success: 'ส่งรายงานสำเร็จแล้ว' }); onSent(report);
+      update({ ...newDraft(assignedNames), success: 'ส่งรายงานสำเร็จแล้ว' }); onSent(report);
     } catch (error) { update({ error: error.message }); }
     finally { update({ busy: false }); unlock(); }
   }
   return <form className="practice-form" onSubmit={submit}>
     <fieldset disabled={!enabled || draft.busy || draft.preparing}>
-      <div className="practice-teacher-fields"><div className="practice-teacher-fields-heading"><strong>ชื่อ–นามสกุลครูผู้ปฏิบัติเวร</strong><small>ระบุได้สูงสุด 3 คน</small></div>{draft.names.map((name, i) => <label key={i}>ครูผู้ปฏิบัติเวร คนที่ {i + 1}{i === 0 ? ' *' : ' (ถ้ามี)'}<input required={i === 0} minLength={2} maxLength={120} autoComplete={i === 0 ? 'name' : 'off'} value={name} placeholder={`ชื่อ–นามสกุลครู คนที่ ${i + 1}`} onInput={e => update({ names: draft.names.map((old, n) => n === i ? e.target.value : old) })} /></label>)}{draft.names.length < 3 ? <button type="button" className="practice-add-teacher" onClick={() => update({ names: [...draft.names, ''] })}><Icon name="plus" size={16} /> เพิ่มครูคนที่ 3</button> : <button type="button" className="practice-add-teacher" onClick={() => update({ names: draft.names.slice(0, 2) })}>นำช่องครูคนที่ 3 ออก</button>}</div>
+      <div className="practice-teacher-fields"><div className="practice-teacher-fields-heading"><strong>ชื่อ–นามสกุลครูผู้ปฏิบัติเวร</strong><small>ระบุได้สูงสุด {MAX_PRACTICE_TEACHERS} คน · แก้ไขตามผู้ปฏิบัติเวรจริงได้</small></div>{draft.names.map((name, i) => <label key={i}>ครูผู้ปฏิบัติเวร คนที่ {i + 1}{i === 0 ? ' *' : ' (ถ้ามี)'}<input required={i === 0} minLength={2} maxLength={120} autoComplete="off" value={name} placeholder={`ชื่อ–นามสกุลครู คนที่ ${i + 1}`} onInput={e => update({ namesTouched: true, names: draft.names.map((old, n) => n === i ? e.target.value : old) })} /></label>)}<div className="practice-teacher-controls">{draft.names.length < MAX_PRACTICE_TEACHERS && <button type="button" className="practice-add-teacher" onClick={() => update({ namesTouched: true, names: [...draft.names, ''] })}><Icon name="plus" size={16} /> เพิ่มครูคนที่ {draft.names.length + 1}</button>}{draft.names.length > 2 && <button type="button" className="practice-add-teacher" onClick={() => update({ namesTouched: true, names: draft.names.slice(0, -1) })}>นำช่องครูคนที่ {draft.names.length} ออก</button>}</div></div>
       <div className="practice-outcome-options" role="group" aria-label="ผลการดูแล">{[['normal', 'ปกติ'], ['incident', 'มีเหตุการณ์']].map(([value, label]) => <label key={value} className={draft.outcome === value ? 'selected' : ''}><input type="radio" name={`outcome-${team.id}`} checked={draft.outcome === value} onChange={() => update({ outcome: value })} />{label}</label>)}</div>
       <label>รายละเอียดการดูแลหรือเหตุการณ์ <span aria-hidden="true">*</span><textarea required maxLength={3000} rows={3} value={draft.details} onInput={e => update({ details: e.target.value })} placeholder="บันทึกการฝึกซ้อมและเหตุการณ์ที่พบ" /></label>
       {draft.outcome === 'incident' && <label>การดำเนินการ <span aria-hidden="true">*</span><textarea required maxLength={2000} rows={2} value={draft.action} onInput={e => update({ action: e.target.value })} placeholder="การดูแลหรือแก้ไขเหตุการณ์" /></label>}
@@ -65,6 +65,7 @@ function TeamForm({ team, draft, update, date, enabled, onSent, lock, unlock }) 
 export default function PracticePage({ navigate, isAdmin = false }) {
   const [date, setDate] = useState(() => practiceDefaultDate(bangkokDate()));
   const [reports, setReports] = useState([]), [loading, setLoading] = useState(true), [error, setError] = useState('');
+  const [roster, setRoster] = useState([]), [rosterLoading, setRosterLoading] = useState(true), [rosterError, setRosterError] = useState(''), [rosterRetry, setRosterRetry] = useState(0);
   const [drafts, setDrafts] = useState({}), [active, setActive] = useState(0), [photo, setPhoto] = useState(null);
   const [editor,setEditor]=useState(null),[showDeleted,setShowDeleted]=useState(false),[adminBusy,setAdminBusy]=useState(false),[adminNotice,setAdminNotice]=useState('');
   const deletedMode=isAdmin&&showDeleted;
@@ -86,6 +87,23 @@ export default function PracticePage({ navigate, isAdmin = false }) {
   useEffect(() => { if (!photo) return; const close = e => { if (e.key === 'Escape') setPhoto(null); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, [photo]);
   // Initialize lazily without remounting forms during background updates.
   useEffect(() => { setDrafts(old => { const next = { ...old }; for (const team of PRACTICE_TEAMS) next[`${date}-${team.id}`] ||= newDraft(); return next; }); }, [date]);
+  useEffect(() => {
+    let cancelled = false; setRoster([]); setRosterLoading(true); setRosterError('');
+    loadPracticeRoster(date).then(rows => {
+      if (cancelled) return;
+      setRoster(rows);
+      setDrafts(old => {
+        const next = { ...old };
+        for (const team of PRACTICE_TEAMS) {
+          const key = `${date}-${team.id}`, names = rows.find(row => row.team_id === team.id)?.teacher_names || [];
+          next[key] = applyRosterNames(next[key] || newDraft(), names);
+        }
+        return next;
+      });
+    }).catch(err => { if (!cancelled) setRosterError(err.message); })
+      .finally(() => { if (!cancelled) setRosterLoading(false); });
+    return () => { cancelled = true; };
+  }, [date, rosterRetry]);
   const complete = new Set(reports.map(r => r.team_id)).size;
   async function removeOrRestore(report,operation){
     if(!isAdmin||adminBusy)return;
@@ -101,15 +119,17 @@ export default function PracticePage({ navigate, isAdmin = false }) {
     {isAdmin&&adminNotice&&<p className="practice-success" role="status">{adminNotice}</p>}
     <div className="practice-date-panel"><label>วันที่ปฏิบัติเวร<input aria-label="วันที่ปฏิบัติเวรฝึกซ้อม" type="date" min={PRACTICE_START} max={PRACTICE_END} value={date} disabled={active > 0} onInput={e => { if (e.target.value >= PRACTICE_START && e.target.value <= PRACTICE_END) setDate(e.target.value); }} /></label><div><strong>{practiceDateLabel(date)}</strong><span>{schedule.label}</span></div><div className="practice-completion"><strong>{deletedMode?String(reports.length):schedule.enabled ? `${complete}/5` : 'งดซ้อม'}</strong><span>{deletedMode?'รายงานที่ลบ':schedule.enabled ? 'คณะสีรายงานแล้ว' : 'ไม่ต้องส่งรายงาน'}</span></div></div>
     {error && <div className="global-error" role="alert">{error} <button type="button" onClick={() => refresh()}>ลองอีกครั้ง</button></div>}
+    {rosterError && <div className="global-error" role="alert">{rosterError} · ยังสามารถกรอกชื่อครูเองได้ <button type="button" onClick={() => setRosterRetry(value => value + 1)}>โหลดตารางเวรอีกครั้ง</button></div>}
     <nav className="practice-team-jumps" aria-label="ไปยังคณะสี">{PRACTICE_TEAMS.map(team => <a href="#/practice" key={team.id} style={{ '--team': team.accent }} onClick={e => { e.preventDefault(); document.getElementById(`practice-${team.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}><i />{team.color}</a>)}</nav>
     <div className="practice-team-list">{PRACTICE_TEAMS.map(team => {
-      const key = `${date}-${team.id}`, draft = drafts[key], teamReports = reports.filter(r => r.team_id === team.id);
+      const key = `${date}-${team.id}`, draft = drafts[key], teamReports = reports.filter(r => r.team_id === team.id), assignedNames = roster.find(row => row.duty_date === date && row.team_id === team.id)?.teacher_names || [];
       return <article key={team.id} id={`practice-${team.id}`} className="practice-team-card" style={{ '--team': team.accent, '--team-soft': team.soft }}>
         <header className="practice-team-header"><div><i /><div><small>{team.color}</small><h2>คณะ{team.name}</h2></div></div><span className={`practice-team-status ${teamReports.length ? 'done' : ''}`}>{!schedule.enabled ? 'งดซ้อม' : loading ? 'กำลังโหลด…' : error ? 'ยังตรวจสอบไม่ได้' : deletedMode?`ลบแล้ว ${teamReports.length} รายการ`:teamReports.length ? `รายงานแล้ว ${teamReports.length} รายการ` : 'ยังไม่รายงาน'}</span></header>
         <div className="practice-team-body practice-photo-card-layout">
           <section className="practice-history" aria-label={`รายงาน ${team.color}`}>{loading ? <p className="practice-reports-loading">กำลังโหลดรายงาน…</p> : teamReports.length ? teamReports.map(report => <PracticeReportCard key={report.id} report={report} onPhoto={setPhoto} disabled={adminBusy} onEdit={isAdmin?(report)=>setEditor({report,team,date}):undefined} onDelete={isAdmin?(report)=>removeOrRestore(report,'delete'):undefined} onRestore={isAdmin?(report)=>removeOrRestore(report,'restore'):undefined} />) : <PracticeReportCard onPhoto={setPhoto} emptyText={deletedMode?'ไม่มีรายการที่ลบของคณะสีนี้':schedule.enabled ? 'ยังไม่มีรายงานของคณะสีนี้' : schedule.label} />}</section>
-          {isAdmin&&schedule.enabled&&!deletedMode&&<div className="practice-form-panel"><button type="button" className="practice-form-toggle practice-admin-add" onClick={()=>setEditor({report:null,team,date})} disabled={adminBusy}>+ เพิ่มรายงาน · Admin</button></div>}
-          {draft && schedule.enabled && !isAdmin && !deletedMode && <PracticeFormPanel key={key} id={`practice-form-${key}`} color={team.color} subtitle={`คณะ${team.name} · ${practiceDateLabel(date)}`} busy={draft.busy || draft.preparing}><TeamForm team={team} date={date} draft={draft} enabled={schedule.enabled} update={patch => setDrafts(old => ({ ...old, [key]: { ...old[key], ...patch } }))} lock={() => setActive(v => v + 1)} unlock={() => setActive(v => Math.max(0, v - 1))} onSent={report => { setReports(old => [report, ...old.filter(r => r.id !== report.id)].sort((a, b) => b.created_at.localeCompare(a.created_at))); }} /></PracticeFormPanel>}
+          {schedule.enabled && !deletedMode && <div className="practice-duty-roster" aria-label={`ครูตามตารางเวร ${team.color}`}><div><Icon name="calendar" size={16} /><strong>ครูตามตารางเวร</strong></div>{rosterLoading ? <p>กำลังโหลดรายชื่อ…</p> : assignedNames.length ? <ul>{assignedNames.map((name,index) => <li key={`${index}-${name}`}>{name}</li>)}</ul> : <p>{rosterError ? 'กรอกชื่อผู้ปฏิบัติเวรในฟอร์มได้' : 'ยังไม่มีรายชื่อในตารางเวร'}</p>}</div>}
+          {isAdmin&&schedule.enabled&&!deletedMode&&<div className="practice-form-panel"><button type="button" className="practice-form-toggle practice-admin-add" onClick={()=>setEditor({report:null,team,date,teacherNames:assignedNames})} disabled={adminBusy}>+ เพิ่มรายงาน · Admin</button></div>}
+          {draft && schedule.enabled && !isAdmin && !deletedMode && <PracticeFormPanel key={key} id={`practice-form-${key}`} color={team.color} subtitle={`คณะ${team.name} · ${practiceDateLabel(date)}`} busy={draft.busy || draft.preparing}><TeamForm team={team} date={date} draft={draft} assignedNames={assignedNames} enabled={schedule.enabled} update={patch => setDrafts(old => ({ ...old, [key]: { ...old[key], ...patch } }))} lock={() => setActive(v => v + 1)} unlock={() => setActive(v => Math.max(0, v - 1))} onSent={report => { setReports(old => [report, ...old.filter(r => r.id !== report.id)].sort((a, b) => b.created_at.localeCompare(a.created_at))); }} /></PracticeFormPanel>}
         </div>
       </article>;
     })}</div>

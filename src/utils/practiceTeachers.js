@@ -7,3 +7,16 @@ export function reportTeacherNames(report) {
 export function enteredTeacherNames(names) {
   return names.map(name => name.trim()).filter(Boolean);
 }
+
+export const MAX_PRACTICE_TEACHERS = 4;
+
+export function draftTeacherNames(names = []) {
+  const result = [...names].slice(0, MAX_PRACTICE_TEACHERS);
+  while (result.length < 2) result.push('');
+  return result;
+}
+
+export function applyRosterNames(draft, names) {
+  // A late network response must not replace names the teacher already edited.
+  return draft.namesTouched ? draft : { ...draft, names: draftTeacherNames(names) };
+}

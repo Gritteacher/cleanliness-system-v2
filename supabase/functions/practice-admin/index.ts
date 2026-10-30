@@ -40,7 +40,7 @@ Deno.serve(async req=>{
     let payload={};
     if(['create','update'].includes(p.operation)){
       if(!/^2026-11-\d{2}$/.test(p.duty_date||'')||p.duty_date<'2026-11-02'||p.duty_date>'2026-11-30'||p.duty_date==='2026-11-07'||!['maen','yaowaman','nipha','piyarat','phanu'].includes(p.team_id))fail('วันที่หรือคณะสีไม่ถูกต้อง');
-      if(!Array.isArray(p.teacher_names)||p.teacher_names.length<1||p.teacher_names.length>3||p.teacher_names.some((name:unknown)=>typeof name!=='string'||name.trim().length<2||name.trim().length>120))fail('กรุณาระบุชื่อครู 1–3 คน ชื่อละ 2–120 ตัวอักษร');
+      if(!Array.isArray(p.teacher_names)||p.teacher_names.length<1||p.teacher_names.length>4||p.teacher_names.some((name:unknown)=>typeof name!=='string'||name.trim().length<2||name.trim().length>120))fail('กรุณาระบุชื่อครู 1–4 คน ชื่อละ 2–120 ตัวอักษร');
       if(!['normal','incident'].includes(p.outcome)||typeof p.details!=='string'||!p.details.trim()||p.details.trim().length>3000||typeof p.action_taken!=='string'||p.action_taken.trim().length>2000||(p.outcome==='incident'&&!p.action_taken.trim()))fail('กรุณากรอกรายละเอียดให้ครบถ้วน');
       const keep=p.keep_photos||[];if(!Array.isArray(keep)||new Set(keep).size!==keep.length||keep.some((full:unknown)=>!existing?.photos.some((image:{full:string})=>image.full===full)))fail('ภาพเดิมไม่ถูกต้อง');
       if(!Number.isInteger(p.photo_count)||p.photo_count<0||keep.length+p.photo_count<1||keep.length+p.photo_count>6)fail('กรุณาแนบภาพ 1–6 ภาพ');

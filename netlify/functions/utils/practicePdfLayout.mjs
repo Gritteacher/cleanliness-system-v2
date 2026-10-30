@@ -26,9 +26,11 @@ export function practicePdfHtml({ options, reports, imageData = new Map(), supab
     const cards = options.teams.map(team => {
       const matches = todays.filter(r => r.team_id === team.id).sort((a,b) => b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id));
       const report = matches[0];
-      const names = reportTeacherNames(report);
+      const allNames = reportTeacherNames(report);
+      // Keep the five-color overview compact; preserve all four names in the appendix.
+      const names = allNames.length > 3 ? [...allNames.slice(0,2),`และอีก ${allNames.length-2} คน (ดูภาคผนวก)`] : allNames;
       const totalText = [report?.details,report?.action_taken,...names].reduce((sum,text)=>sum+Array.from(text || '').length,0);
-      const needsDetails = !!report && (Array.from(report.details || '').length > 100 || Array.from(report.action_taken || '').length > 45 || names.some(name => Array.from(name).length > 32) || totalText > 180 || matches.length > 1);
+      const needsDetails = !!report && (allNames.length > 3 || Array.from(report.details || '').length > 100 || Array.from(report.action_taken || '').length > 45 || names.some(name => Array.from(name).length > 32) || totalText > 180 || matches.length > 1);
       let note = '';
       if (needsDetails) {
         const number = ++appendixNo;

@@ -6,6 +6,13 @@ const base='https://example.supabase.co';
 const options=practicePdfOptions({start:'2026-11-02',end:'2026-11-02',teamIds:['maen','yaowaman','nipha','piyarat','phanu']});
 const report={id:'test',duty_date:'2026-11-02',team_id:'maen',teacher_name:'ครูตัวอย่าง',teacher_names:['ครูตัวอย่าง','ครูทดสอบ'],created_at:'2026-11-02T12:00:00Z',outcome:'normal',details:'ดูแลนักเรียนเรียบร้อย',photos:[]};
 const render=(reports,opts=options)=>practicePdfHtml({options:opts,reports,supabaseUrl:base,regularFont:'',mediumFont:''});
+test('four teachers fit the overview and every full name is preserved in the appendix',()=>{
+ const names=['ครูตัวอย่างหนึ่ง','ครูตัวอย่างสอง','ครูตัวอย่างสาม','ครูตัวอย่างสี่'];
+ const html=render([{...report,teacher_names:names}]);
+ assert.ok(html.includes('และอีก 2 คน (ดูภาคผนวก)'));
+ assert.ok(html.includes('ภาคผนวก 1'));
+ for(const name of names)assert.ok(html.includes(`<p>${name}</p>`));
+});
 test('valid date ranges include each calendar day and sort selected colors consistently',()=>{const value=practicePdfOptions({start:'2026-11-06',end:'2026-11-08',teamIds:['phanu','maen']});assert.deepEqual(value.days,['2026-11-06','2026-11-07','2026-11-08']);assert.deepEqual(value.teamIds,['maen','phanu']);});
 test('invalid dates, reversed ranges and invalid colors are rejected',()=>{for(const patch of [{start:'2026-11-31'},{start:'2026-11-04',end:'2026-11-02'},{teamIds:[]},{teamIds:['maen','maen']},{teamIds:['unknown']},{end:'bad'}])assert.throws(()=>practicePdfOptions({...options,...patch}));});
 test('daily sheet contains all five colors including clearly missing reports',()=>{const html=render([report]);assert.equal((html.match(/class="team-card"/g)||[]).length,5);assert.equal((html.match(/ยังไม่ส่งรายงาน/g)||[]).length,4);assert.ok(html.includes('ครูทดสอบ'));assert.ok(!html.includes('เลขอ้างอิง'));assert.equal((html.match(/class="sheet"/g)||[]).length,1);});

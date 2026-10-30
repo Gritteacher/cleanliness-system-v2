@@ -1,15 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { PRACTICE_START, PRACTICE_END, PRACTICE_TEAMS, practiceSchedule } from '../utils/practiceSchedule.js';
-import { reportTeacherNames, enteredTeacherNames } from '../utils/practiceTeachers.js';
+import { reportTeacherNames, enteredTeacherNames, draftTeacherNames, MAX_PRACTICE_TEACHERS } from '../utils/practiceTeachers.js';
 import { compressSubmissionPhoto } from '../utils/photoCompression.js';
-import { managePracticeReport } from '../services/practiceService.js';
+import { managePracticeReport, loadPracticeRoster } from '../services/practiceService.js';
 
 export default function AdminPracticeEditor({ value, onClose, onSaved }) {
   const { report }=value,dialog=useRef(null),id=useRef(report?.id||crypto.randomUUID()),urls=useRef(new Set()),mounted=useRef(true);
   const [date,setDate]=useState(report?.duty_date||value.date),[teamId,setTeamId]=useState(report?.team_id||value.team.id);
-  const [names,setNames]=useState(()=>{const next=reportTeacherNames(report);while(next.length<2)next.push('');return next;});
+  const namesTouched=useRef(false);
+  const [names,setNames]=useState(()=>draftTeacherNames(report?reportTeacherNames(report):value.teacherNames));
   const [outcome,setOutcome]=useState(report?.outcome||'normal'),[details,setDetails]=useState(report?.details||''),[action,setAction]=useState(report?.action_taken||'');
   const [kept,setKept]=useState(report?.photos||[]),[photos,setPhotos]=useState([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  useEffect(()=>{
+    if(report||namesTouched.current)return;
+    let cancelled=false;
+    // Never apply a different day's roster to an existing report or edited names.
+    setNames(draftTeacherNames());
+    loadPracticeRoster(date).then(rows=>{if(!cancelled&&!namesTouched.current)setNames(draftTeacherNames(rows.find(row=>row.team_id===teamId)?.teacher_names));}).catch(()=>{});
+    return()=>{cancelled=true;};
+  },[date,teamId,report]);
   useEffect(()=>{mounted.current=true;const trigger=document.activeElement,previous=document.body.style.overflow;document.body.style.overflow='hidden';dialog.current.showModal();return()=>{mounted.current=false;document.body.style.overflow=previous;urls.current.forEach(url=>URL.revokeObjectURL(url));if(trigger instanceof HTMLElement&&trigger.isConnected)trigger.focus();};},[]);
   async function addPhotos(event){
     const files=[...event.target.files||[]];event.target.value='';if(!files.length)return;
@@ -31,7 +40,7 @@ export default function AdminPracticeEditor({ value, onClose, onSaved }) {
     <header className="practice-modal-header"><div><h2 id="practice-admin-title">{report?'แก้ไขรายงาน':'เพิ่มรายงาน'} · Admin</h2><p>ชื่อครู รายละเอียด วันที่ คณะสี และรูปภาพ</p></div><button type="button" className="practice-modal-close" aria-label="ปิดฟอร์ม Admin" autoFocus disabled={busy} onClick={onClose}>×</button></header>
     <div className="practice-modal-body"><form className="practice-form" onSubmit={save}><fieldset disabled={busy}>
       <div className="practice-admin-date-team"><label>วันที่รายงาน<input type="date" required min={PRACTICE_START} max={PRACTICE_END} value={date} onChange={event=>setDate(event.target.value)}/></label><label>คณะสี<select value={teamId} onChange={event=>setTeamId(event.target.value)}>{PRACTICE_TEAMS.map(team=><option key={team.id} value={team.id}>{team.name} · {team.color}</option>)}</select></label></div>
-      <div className="practice-teacher-fields">{names.map((name,index)=><label key={index}>ครูผู้ปฏิบัติเวร คนที่ {index+1}{index===0?' *':' (ถ้ามี)'}<input required={index===0} minLength={2} maxLength={120} value={name} onChange={event=>setNames(old=>old.map((value,i)=>i===index?event.target.value:value))}/></label>)}{names.length<3?<button type="button" className="practice-add-teacher" onClick={()=>setNames(old=>[...old,''])}>+ เพิ่มครูคนที่ 3</button>:<button type="button" className="practice-add-teacher" onClick={()=>setNames(old=>old.slice(0,2))}>นำช่องครูคนที่ 3 ออก</button>}</div>
+      <div className="practice-teacher-fields">{names.map((name,index)=><label key={index}>ครูผู้ปฏิบัติเวร คนที่ {index+1}{index===0?' *':' (ถ้ามี)'}<input required={index===0} minLength={2} maxLength={120} value={name} onChange={event=>{namesTouched.current=true;setNames(old=>old.map((value,i)=>i===index?event.target.value:value));}}/></label>)}<div className="practice-teacher-controls">{names.length<MAX_PRACTICE_TEACHERS&&<button type="button" className="practice-add-teacher" onClick={()=>{namesTouched.current=true;setNames(old=>[...old,'']);}}>+ เพิ่มครูคนที่ {names.length+1}</button>}{names.length>2&&<button type="button" className="practice-add-teacher" onClick={()=>{namesTouched.current=true;setNames(old=>old.slice(0,-1));}}>นำช่องครูคนที่ {names.length} ออก</button>}</div></div>
       <div className="practice-outcome-options">{[['normal','ปกติ'],['incident','มีเหตุการณ์']].map(([value,label])=><label key={value} className={outcome===value?'selected':''}><input type="radio" name="admin-practice-outcome" checked={outcome===value} onChange={()=>setOutcome(value)}/>{label}</label>)}</div>
       <label>รายละเอียดการดูแลหรือเหตุการณ์<textarea required rows={3} maxLength={3000} value={details} onChange={event=>setDetails(event.target.value)}/></label>
       {outcome==='incident'&&<label>การดำเนินการ<textarea required rows={2} maxLength={2000} value={action} onChange={event=>setAction(event.target.value)}/></label>}
