@@ -1,6 +1,7 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 import { compressSubmissionPhoto } from '../utils/photoCompression.js';
 import { photoExtension } from '../utils/photoInput.js';
+import { activeSubmissionPhotos, removeSubmissionPhoto } from '../utils/submissionPhotos.js';
 
 function assertClient() {
   if (!isSupabaseConfigured || !supabase) {
@@ -60,14 +61,14 @@ export async function loadWorkspace(scoreDate = bangkokDate()) {
     supabase.from('cs_team_area_assignments').select('*, team:cs_teams(*), area:cs_areas(*)').eq('active', true).order('sort_order'),
     supabase.from('cs_duty_schedules').select('*, team:cs_teams(*)').order('weekday'),
     supabase.from('cs_schedule_overrides').select('*, team:cs_teams(*)').eq('duty_date', scoreDate),
-    supabase.from('cs_duty_submissions').select('*, assignment:cs_team_area_assignments(*, team:cs_teams(*), area:cs_areas(*)), photos:cs_submission_photos(*)').eq('duty_date', scoreDate).is('deleted_at', null)
+    supabase.from('cs_duty_submissions').select('*, assignment:cs_team_area_assignments(*, team:cs_teams(*), area:cs_areas(*)), photos:cs_submission_photos(*)').eq('duty_date', scoreDate).is('deleted_at', null).is('photos.deleted_at', null)
   ]);
 
   const results = [teamsResult, termResult, areasResult, assignmentsResult, schedulesResult, overridesResult, submissionsResult];
   const failed = results.find((result) => result.error);
   if (failed) throw failed.error;
 
-  const submissions = submissionsResult.data || [];
+  const submissions = (submissionsResult.data || []).map(row => ({ ...row, photos: activeSubmissionPhotos(row.photos) }));
   const evaluationsResult = await supabase
     .from('cs_evaluations')
     .select('*')
@@ -182,12 +183,7 @@ export async function uploadSubmissionPhoto({ submissionId, assignmentId, dutyDa
 
 export async function deleteSubmissionPhoto(photo) {
   assertClient();
-  const { data: path, error } = await supabase.rpc('cs_delete_live_photo', { p_photo_id: photo.id });
-  if (error) throw error;
-  if (photo.public_url && path) {
-    const { error: removeError } = await supabase.storage.from('cs-published-photos').remove([path, photo.thumbnail_path].filter(Boolean));
-    if (removeError) throw removeError;
-  }
+  return removeSubmissionPhoto(supabase, photo);
 }
 
 export async function saveSchoolTerm(input) {
