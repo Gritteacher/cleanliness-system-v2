@@ -1,0 +1,25 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local photo deletion regression</title><div id="root"></div>
+<script type="module">
+import React,{useEffect,useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import WorkspacePage from '/src/pages/v3/WorkspacePage.jsx';
+import {auditCounts,finishDelete,finishUpload} from '/src/services/v3Service.js';
+import '/src/styles/global.css';
+window.confirm=()=>true;
+const picture='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="180" height="120"><rect width="180" height="120" fill="#b4cdb6"/><text x="35" y="68" font-size="20">TEST ONLY</text></svg>');
+const assignment={id:'area-test',team_id:'maen',room_label:'1/1',area:{code:'A01',name:'พื้นที่ทดสอบบนเครื่อง'},team:{name:'สีม่วง'}};
+const data={date:'2026-11-02',term:{name:'ทดสอบเฉพาะบนเครื่อง ไม่เชื่อมฐานข้อมูลจริง'},teams:[{id:'maen',short_name:'สีม่วง'}],assignments:[assignment],schedules:[],overrides:[{team_id:'maen'}],evaluations:[],submissions:[{id:'submission-test',assignment_id:'area-test',duty_status:'present',student_count:24,photos:[{id:'active',view_url:picture,full_url:picture,deleted_at:null},{id:'deleted',view_url:picture,full_url:picture,deleted_at:'2026-11-02'}]}]};
+function App(){
+ const [counts,setCounts]=useState(auditCounts()),[refresh,setRefresh]=useState(0),[failRefresh,setFailRefresh]=useState(false);
+ useEffect(()=>{const update=()=>setCounts(auditCounts());document.addEventListener('photo-audit-update',update);return()=>document.removeEventListener('photo-audit-update',update);},[]);
+ return React.createElement(React.Fragment,null,
+  React.createElement('aside',{style:{padding:12,background:'#fff4be',position:'sticky',top:0,zIndex:20}},
+   React.createElement('strong',null,'LOCAL TEST ONLY · no production writes'),
+   React.createElement('output',{style:{display:'block'}},'delete calls: '+counts.deletes+' / upload calls: '+counts.uploads+' / refresh: '+refresh),
+   React.createElement('button',{onClick:finishDelete},'จำลองลบสำเร็จ'),
+   React.createElement('button',{onClick:finishUpload},'จำลองอัปโหลดสำเร็จ'),
+   React.createElement('button',{onClick:()=>setFailRefresh(true)},'จำลองรีเฟรชล้มเหลว')),
+  React.createElement(WorkspacePage,{user:{id:'test-user',role:'team',teamId:'maen',displayName:'ทดสอบ',team:{name:'สีม่วง'}},data:{...data},date:'2026-11-02',loading:false,onDateChange:()=>{},onRefresh:async()=>{setRefresh(v=>v+1);if(failRefresh)throw Error('mock refresh failure');},navigate:()=>{}}));
+}
+createRoot(document.getElementById('root')).render(React.createElement(App));
+</script></html>

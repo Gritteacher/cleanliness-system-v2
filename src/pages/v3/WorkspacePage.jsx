@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Icon from '../../components/Icon.jsx';
+import { activeSubmissionPhotos } from '../../utils/submissionPhotos.js';
 import {
   bangkokDate,
   deleteEvaluation,
@@ -97,6 +98,11 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
   const [dirty, setDirty] = useState(false);
   const [saveState, setSaveState] = useState('idle');
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoAction, setPhotoAction] = useState('');
+  const [removedPhotoIds, setRemovedPhotoIds] = useState(() => new Set());
+  const [photoNotice, setPhotoNotice] = useState('');
+  const removedPhotoIdsRef = useRef(new Set());
+  const photoOperation = useRef(false);
   const [uploadItems, setUploadItems] = useState([]);
   const version = useRef(0);
   const previewUrls = useRef(new Set());
@@ -148,48 +154,69 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
   }
 
   async function uploadPhotos(event) {
+    if (!editable || photoOperation.current) { event.target.value = ''; return; }
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
-    const queued = files.map((file, index) => {
-      const previewUrl = URL.createObjectURL(file);
-      previewUrls.current.add(previewUrl);
-      return { id: `${Date.now()}-${index}-${file.name}`, file, previewUrl, status: 'queued', error: '' };
-    });
-    setUploadItems((previous) => [...previous.filter((item) => item.status === 'error'), ...queued]);
+    photoOperation.current = true;
+    setPhotoAction('upload');
+    setPhotoNotice('');
     setPhotoBusy(true);
-    event.target.value = '';
-    for (const item of queued) {
-      setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'uploading' } : row));
-      try {
-        await uploadSubmissionPhoto({
-          submissionId: current?.id,
-          assignmentId: assignment.id,
-          dutyDate: date,
-          userId: user.id,
-          file: item.file
-        });
-        setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'saved' } : row));
-      } catch (error) {
-        setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'error', error: error.message } : row));
-      }
-    }
-    await onChanged?.({ background: true });
-    setUploadItems((previous) => {
-      previous.filter((item) => item.status !== 'error').forEach((item) => {
-        previewUrls.current.delete(item.previewUrl);
-        URL.revokeObjectURL(item.previewUrl);
+    try {
+      const queued = files.map((file, index) => {
+        const previewUrl = URL.createObjectURL(file);
+        previewUrls.current.add(previewUrl);
+        return { id: `${Date.now()}-${index}-${file.name}`, file, previewUrl, status: 'queued', error: '' };
       });
-      return previous.filter((item) => item.status === 'error');
-    });
-    setPhotoBusy(false);
+      setUploadItems((previous) => [...previous.filter((item) => item.status === 'error'), ...queued]);
+      event.target.value = '';
+      for (const item of queued) {
+        setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'uploading' } : row));
+        try {
+          await uploadSubmissionPhoto({
+            submissionId: current?.id,
+            assignmentId: assignment.id,
+            dutyDate: date,
+            userId: user.id,
+            file: item.file
+          });
+          setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'saved' } : row));
+        } catch (error) {
+          setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'error', error: error.message } : row));
+        }
+      }
+      await onChanged?.({ background: true });
+      setUploadItems((previous) => {
+        previous.filter((item) => item.status !== 'error').forEach((item) => {
+          previewUrls.current.delete(item.previewUrl);
+          URL.revokeObjectURL(item.previewUrl);
+        });
+        return previous.filter((item) => item.status === 'error');
+      });
+    } catch {
+      setPhotoNotice('ยังตรวจสอบรูปที่อัปโหลดไม่ได้ กรุณาลองโหลดข้อมูลอีกครั้ง');
+    } finally {
+      photoOperation.current = false;
+      setPhotoBusy(false);
+    }
   }
 
   async function removePhoto(photo) {
+    if (!editable || photoOperation.current || removedPhotoIdsRef.current.has(photo.id)) return;
     if (!window.confirm('ยืนยันการลบรูปภาพนี้หรือไม่')) return;
+    photoOperation.current = true;
+    setPhotoAction('delete');
     setPhotoBusy(true);
-    try { await deleteSubmissionPhoto(photo); await onChanged?.({ background: true }); }
+    setPhotoNotice('');
+    try {
+      const result = await deleteSubmissionPhoto(photo);
+      removedPhotoIdsRef.current.add(photo.id);
+      setRemovedPhotoIds(new Set(removedPhotoIdsRef.current));
+      setPhotoNotice(result?.cleanupWarning ? 'นำรูปออกจากรายงานแล้ว แต่ยังล้างไฟล์ไม่สำเร็จ กรุณาแจ้งผู้ดูแลระบบ' : 'ลบรูปแล้ว');
+      try { await onChanged?.({ background: true }); }
+      catch { setPhotoNotice('ลบรูปแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ กรุณาลองโหลดข้อมูลอีกครั้ง'); }
+    }
     catch (error) { window.alert(error.message); }
-    setPhotoBusy(false);
+    finally { photoOperation.current = false; setPhotoBusy(false); }
   }
 
   return <article className="task-card live-task-card">
@@ -213,17 +240,18 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
     </label>
 
     <div className="task-photo-block">
-      <div className="task-photo-list">{(current?.photos || []).map((photo) => <span className="editable-photo" key={photo.id}>
+      <div className="task-photo-list">{activeSubmissionPhotos(current?.photos).filter(photo => !removedPhotoIds.has(photo.id)).map((photo) => <span className="editable-photo" key={photo.id}>
         <a href={photo.full_url || photo.view_url} target="_blank" rel="noreferrer"><img src={photo.view_url || photo.full_url} alt={`รูป ${assignment.room_label}`} /></a>
-        {editable ? <button type="button" onClick={() => removePhoto(photo)} aria-label="ลบรูป">×</button> : null}
+        {editable ? <button type="button" disabled={photoBusy} onClick={() => removePhoto(photo)} aria-label="ลบรูป">×</button> : null}
       </span>)}{uploadItems.map((item) => <span className={`upload-preview ${item.status}`} key={item.id} title={item.error || item.file.name}>
         <img src={item.previewUrl} alt={`ตัวอย่าง ${item.file.name}`} />
         <small>{item.status === 'error' ? 'ไม่สำเร็จ' : item.status === 'saved' ? 'เสร็จแล้ว' : 'กำลังส่ง'}</small>
       </span>)}</div>
+      {photoNotice ? <p className="photo-operation-notice" role="status">{photoNotice}</p> : null}
       {editable ? <div className="photo-upload-actions">
         <label className="photo-upload-button"><Icon name="image" size={16} /> เลือกรูปจากเครื่อง<input type="file" accept="image/*,.heic,.heif" multiple aria-label="เลือกรูปจากเครื่อง" onChange={uploadPhotos} disabled={photoBusy} /></label>
         <label className="photo-upload-button camera"><Icon name="camera" size={16} /> ถ่ายรูป<input type="file" accept="image/*,.heic,.heif" capture="environment" aria-label="ถ่ายรูป" onChange={uploadPhotos} disabled={photoBusy} /></label>
-        <small>{photoBusy ? 'กำลังแปลง ย่อ และอัปโหลดทีละรูป…' : 'ย่อรูปอัตโนมัติ · HEIC/HEIF แปลงเป็น JPG'}</small>
+        <small>{photoBusy ? (photoAction === 'delete' ? 'กำลังลบรูปภาพ…' : 'กำลังแปลง ย่อ และอัปโหลดทีละรูป…') : 'ย่อรูปอัตโนมัติ · HEIC/HEIF แปลงเป็น JPG'}</small>
       </div> : <small>ปิดการแก้ไขแล้ว</small>}
     </div>
 
