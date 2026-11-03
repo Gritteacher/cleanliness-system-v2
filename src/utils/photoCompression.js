@@ -5,7 +5,11 @@ const THUMB_OPTIONS = { maxSide: 600, minSide: 400, maxBytes: 80 * 1024, minQual
 function encodePhoto(canvas, quality, mimeType) {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
-      if (!blob || blob.type !== mimeType) reject(new Error('เบราว์เซอร์นี้ไม่รองรับการบีบอัดภาพ กรุณาใช้เบราว์เซอร์เวอร์ชันล่าสุด'));
+      if (!blob || blob.type !== mimeType) {
+        const error = new Error('เตรียมรูปภาพไม่สำเร็จ กรุณาลองเลือกรูปใหม่หรือเลือกครั้งละหนึ่งภาพ');
+        error.code = 'PHOTO_ENCODING_UNAVAILABLE';
+        reject(error);
+      }
       else resolve(blob);
     }, mimeType, quality);
   });
@@ -43,9 +47,19 @@ export async function compressSubmissionPhoto(file) {
   const { image, mimeType } = await decodeUploadPhoto(file);
   try {
     if (!image.width || !image.height) throw new Error('ไฟล์รูปภาพไม่มีขนาดที่ถูกต้อง');
-    const full = await compressVariant(image, FULL_OPTIONS, mimeType);
-    const thumbnail = await compressVariant(image, THUMB_OPTIONS, mimeType);
-    return { full, thumbnail, originalBytes: file.size };
+    async function variants(type) {
+      const full = await compressVariant(image, FULL_OPTIONS, type);
+      const thumbnail = await compressVariant(image, THUMB_OPTIONS, type);
+      return { full, thumbnail, originalBytes: file.size };
+    }
+    try {
+      return await variants(mimeType);
+    } catch (error) {
+      // Some browsers decode WebP but cannot encode it, returning PNG instead.
+      // Retry both sizes as JPEG so their MIME types and storage paths agree.
+      if (mimeType !== 'image/webp' || error.code !== 'PHOTO_ENCODING_UNAVAILABLE') throw error;
+      return await variants('image/jpeg');
+    }
   } finally {
     image.close?.();
   }
