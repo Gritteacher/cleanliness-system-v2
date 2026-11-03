@@ -1,0 +1,33 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><title>ทดสอบ JPG fallback บนเครื่อง</title>
+<style>body{font:16px/1.7 sans-serif;max-width:720px;margin:32px auto;padding:20px;background:#f6f7f0;color:#183e2f}button{padding:12px 24px}pre{white-space:pre-wrap;background:white;padding:20px;border-radius:16px}img{max-width:320px;width:100%;border-radius:16px}</style>
+<h1>ทดสอบแปลงรูปเป็น JPG อัตโนมัติ</h1><p>LOCAL TEST ONLY · ประมวลผลบนเครื่อง ไม่อัปโหลดหรือส่งรายงานจริง</p>
+<button>เริ่มทดสอบ</button><pre role="status">รอเริ่มทดสอบ</pre><img alt="ตัวอย่างรูป JPG หลังแปลง">
+<script type="module">
+import { compressSubmissionPhoto } from '/src/utils/photoCompression.js';
+import { photoExtension } from '/src/utils/photoInput.js';
+document.querySelector('button').onclick = async () => {
+  const status = document.querySelector('pre');
+  const original = HTMLCanvasElement.prototype.toBlob;
+  status.textContent = 'กำลังทดสอบ…';
+  try {
+    const canvas = document.createElement('canvas'); canvas.width = 2000; canvas.height = 1400;
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#dceadf'; ctx.fillRect(0,0,2000,1400);
+    ctx.fillStyle = '#24583e'; ctx.font = '100px sans-serif'; ctx.fillText('LOCAL IMAGE TEST', 100, 700);
+    const source = new File([await new Promise(r => canvas.toBlob(r, 'image/jpeg', .9))], 'test.jpg', {type:'image/jpeg'});
+    const native = await compressSubmissionPhoto(source);
+    // Reproduce the unsupported-WebP behavior while using actual JPEG encoding.
+    HTMLCanvasElement.prototype.toBlob = function(callback, type, quality) {
+      return original.call(this, callback, type === 'image/webp' ? 'image/png' : type, quality);
+    };
+    const fallback = await compressSubmissionPhoto(source);
+    for (const image of [fallback.full, fallback.thumbnail]) {
+      const bytes = new Uint8Array(await image.arrayBuffer());
+      if (image.type !== 'image/jpeg' || bytes[0] !== 255 || bytes[1] !== 216 || bytes.at(-2) !== 255 || bytes.at(-1) !== 217) throw new Error('JPEG signature invalid');
+    }
+    if (fallback.full.size > 512*1024 || fallback.thumbnail.size > 128*1024) throw new Error('size limit exceeded');
+    document.querySelector('img').src = URL.createObjectURL(fallback.full);
+    status.textContent = `PASS · แปลงรูปสำเร็จ\nโหมดปกติ: ${native.full.type}\nจำลองเครื่องไม่รองรับ WebP: เปลี่ยนเป็น JPG สำเร็จ\nรูปหลัก: ${fallback.full.type} · ${fallback.full.size} bytes\nรูปตัวอย่าง: ${fallback.thumbnail.type} · ${fallback.thumbnail.size} bytes\nนามสกุล: .${photoExtension(fallback.full)} / .${photoExtension(fallback.thumbnail)}\nตรวจลายเซ็นไฟล์ JPG จริง: ผ่านทั้งสองรูป\nตรวจขนาดไฟล์ก่อนส่ง: ผ่าน\nไม่มีการส่งข้อมูลไปเซิร์ฟเวอร์`;
+  } catch (error) { status.textContent = 'FAIL: ' + error.message; }
+  finally { HTMLCanvasElement.prototype.toBlob = original; }
+};
+</script></html>
