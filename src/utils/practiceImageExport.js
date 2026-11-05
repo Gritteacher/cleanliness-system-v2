@@ -13,7 +13,7 @@ export async function practicePdfToImages(blob, basename, onProgress=()=>{}) {
     let single;
     for(let number=1;number<=pdf.numPages;number++){
       onProgress(number,pdf.numPages);
-      const page=await pdf.getPage(number),viewport=page.getViewport({scale:2});
+      const page=await pdf.getPage(number),viewport=page.getViewport({scale:3});
       const canvas=document.createElement('canvas');
       try{
         canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
