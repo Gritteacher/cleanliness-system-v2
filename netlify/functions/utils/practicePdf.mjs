@@ -69,6 +69,9 @@ export async function createPracticePdf(input, test = {}) {
       for(const image of document.images){
         try{
           await image.decode();
+          // Bias portrait crops slightly upward to leave headroom. This is an
+          // orientation heuristic, not face detection; originals stay intact.
+          image.dataset.orientation=image.naturalHeight>image.naturalWidth?'portrait':'landscape';
           // Match printed size at 300 DPI, never upscale or globally shrink to
           // tiny thumbnails. Text remains vector in PDF.
           const canvas=document.createElement('canvas');

@@ -6,6 +6,11 @@ const base='https://example.supabase.co';
 const options=practicePdfOptions({start:'2026-11-02',end:'2026-11-02',teamIds:['maen','yaowaman','nipha','piyarat','phanu']});
 const report={id:'test',duty_date:'2026-11-02',team_id:'maen',teacher_name:'ครูตัวอย่าง',teacher_names:['ครูตัวอย่าง','ครูทดสอบ'],created_at:'2026-11-02T12:00:00Z',outcome:'normal',details:'ดูแลนักเรียนเรียบร้อย',photos:[]};
 const render=(reports,opts=options)=>practicePdfHtml({options:opts,reports,supabaseUrl:base,regularFont:'',mediumFont:''});
+test('export frames fill by cropping, with upper portrait focus and no stretching',()=>{
+ const html=render([report]);
+ assert.ok(html.includes('object-fit:cover;object-position:50% 50%'));
+ assert.ok(html.includes('img[data-orientation="portrait"]{object-position:50% 30%}'));
+});
 test('four teachers are all preserved directly on the single daily sheet',()=>{
  const names=['ครูตัวอย่างหนึ่ง','ครูตัวอย่างสอง','ครูตัวอย่างสาม','ครูตัวอย่างสี่'];
  const html=render([{...report,teacher_names:names}]);
