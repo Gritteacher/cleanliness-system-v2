@@ -69,13 +69,22 @@ export async function createPracticePdf(input, test = {}) {
       for(const image of document.images){
         try{
           await image.decode();
+          // Bias portrait crops slightly upward to leave headroom. This is an
+          // orientation heuristic, not face detection; originals stay intact.
+          image.dataset.orientation=image.naturalHeight>=image.naturalWidth?'portrait':'landscape';
           // Match printed size at 300 DPI, never upscale or globally shrink to
           // tiny thumbnails. Text remains vector in PDF.
           const canvas=document.createElement('canvas');
           const box=image.getBoundingClientRect();
-          const ratio=Math.min(1,Math.max(box.width*3.125/image.naturalWidth,box.height*3.125/image.naturalHeight));
-            canvas.width=Math.round(image.naturalWidth*ratio);canvas.height=Math.round(image.naturalHeight*ratio);
-            const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#f1f4ec';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,0,0,canvas.width,canvas.height);
+          // Bake the cover crop into the export-only JPEG. Leaving oversized
+          // images clipped by CSS can make Chromium rasterize huge PDF images.
+          const cropWidth=Math.min(image.naturalWidth,image.naturalHeight*box.width/box.height);
+          const cropHeight=cropWidth*box.height/box.width;
+          const x=(image.naturalWidth-cropWidth)*.5;
+          const y=(image.naturalHeight-cropHeight)*(image.dataset.orientation==='portrait'?.3:.5);
+          const ratio=Math.min(1,box.width*3.125/cropWidth,box.height*3.125/cropHeight);
+          canvas.width=Math.max(1,Math.round(cropWidth*ratio));canvas.height=Math.max(1,Math.round(cropHeight*ratio));
+          const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#f1f4ec';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,x,y,cropWidth,cropHeight,0,0,canvas.width,canvas.height);
           image.src=canvas.toDataURL('image/jpeg',.9);await image.decode();canvas.width=1;canvas.height=1;
         }catch{
           const placeholder=document.createElement('div');placeholder.className='no-image';placeholder.textContent='ไม่สามารถโหลดภาพได้';image.replaceWith(placeholder);
