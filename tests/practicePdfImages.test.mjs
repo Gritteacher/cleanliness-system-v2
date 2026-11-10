@@ -9,7 +9,7 @@ test('fetches every full image in latest report and never fetches old or unselec
  try{
   const photos=Array.from({length:6},(_,i)=>({full:root+i+'.jpg',thumbnail:root+i+'.thumb.jpg'}));
   const images=await imageDataForReports([{...report,photos},{...report,id:'old',created_at:'2026-11-05T10:00:00Z',photos:[{full:root+'old.jpg'}]},{...report,team_id:'phanu',photos:[{full:root+'other.jpg'}]}],options,base);
-  assert.equal(images.size,6);assert.deepEqual(calls,photos.map(p=>p.full));
+  assert.equal(images.size,7);assert.deepEqual(calls,[root+'old.jpg',...photos.map(p=>p.full)]);
  }finally{globalThis.fetch=original;}
 });
 test('falls back to thumbnail only when full image fails and refuses arbitrary origins',async()=>{

@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import chromium from '@sparticuz/chromium';
 import { chromium as playwrightChromium } from 'playwright-core';
 import { practicePdfOptions } from '../../../src/utils/practicePdfOptions.js';
-import { practicePdfHtml, safePracticePhoto, latestPracticeReports } from './practicePdfLayout.mjs';
+import { practicePdfHtml, safePracticePhoto, combinedPracticeReports } from './practicePdfLayout.mjs';
 import { pdfAttributionFooter } from './pdfAttribution.mjs';
 
 export async function loadPublishedPracticeReports(client, options) {
@@ -21,7 +21,7 @@ export async function loadPublishedPracticeReports(client, options) {
 export async function imageDataForReports(reports, options, supabaseUrl) {
   // Fetch all selected photos, preferring full-resolution files. Keep the same
   // allowlist, bounded reads and timeouts; no privileged storage credentials.
-  const sources=latestPracticeReports(reports,options).flatMap(r=>(r.photos||[]).slice(0,6));
+  const sources=combinedPracticeReports(reports,options).flatMap(r=>(r.photos||[]));
   if(sources.length>180)throw new Error('มีภาพจำนวนมาก กรุณาเลือกช่วงวันที่สั้นลงเพื่อส่งออกภาพคมชัด');
   const result=new Map();
   let next=0;const deadline=AbortSignal.timeout(12000);
