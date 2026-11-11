@@ -4,11 +4,15 @@ import assert from 'node:assert/strict';
 import {createClient} from '@supabase/supabase-js';
 import {createPublicScorePdf} from '../netlify/functions/utils/publicPdf.mjs';
 import {loadCleanlinessImages} from '../netlify/functions/utils/cleanlinessPdfImages.mjs';
+import {cleanlinessPdfFilename} from '../shared/cleanlinessPdfFilename.mjs';
 const executablePath='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const date=process.argv.find(v=>/^\d{4}-\d{2}-\d{2}$/.test(v))||'2026-11-02';
 async function save(name,overview,options={}){
  const file=`output/pdf/${name}.pdf`;
- await fs.writeFile(file,await createPublicScorePdf({date},{overview,executablePath,...options}));
+ const result=await createPublicScorePdf({date,returnMetadata:true},{overview,executablePath,...options});
+ assert.equal(result.fileName,cleanlinessPdfFilename(date,overview.scheduledTeam));
+ assert.equal(decodeURIComponent(result.contentDisposition.split("filename*=UTF-8''")[1]),result.fileName);
+ await fs.writeFile(file,result.pdfBuffer);
  const info=execFileSync('pdfinfo',[file],{encoding:'utf8'});
  assert.match(info,/Pages:\s+1\b/);assert.match(info,/Page size:.*A4/);
  console.log(name+': one A4 page verified');

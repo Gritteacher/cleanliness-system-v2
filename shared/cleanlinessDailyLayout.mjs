@@ -1,4 +1,5 @@
 import {APP_NAME_TH, APP_NAME_EN, APP_ATTRIBUTION} from './appMetadata.mjs';
+import {cleanlinessPdfFilename} from './cleanlinessPdfFilename.mjs';
 
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function cleanlinessDate(value){
@@ -70,7 +71,7 @@ export function cleanlinessDailyBody({date,overview={},supabaseUrl,imageData}){
  <footer class="clean-footer"><span>${escape(APP_ATTRIBUTION)}</span><span>ประจำวันที่ ${escape(date)} · 1 / 1</span></footer></article>`;
 }
 export function cleanlinessDailyHtml({date,overview,supabaseUrl,imageData,regularFont='',mediumFont=''}){
- return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>รายงานคะแนนความสะอาด ${escape(date)}</title><style>@font-face{font-family:Sarabun;src:url(data:font/ttf;base64,${regularFont})} @font-face{font-family:Sarabun;src:url(data:font/ttf;base64,${mediumFont});font-weight:600} @page{size:A4 portrait;margin:10mm}html,body{margin:0;padding:0;background:white} ${cleanlinessDailyCss}</style></head><body>${cleanlinessDailyBody({date,overview,supabaseUrl,imageData})}</body></html>`;
+ return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escape(cleanlinessPdfFilename(date,overview?.scheduledTeam).replace(/\.pdf$/,''))}</title><style>@font-face{font-family:Sarabun;src:url(data:font/ttf;base64,${regularFont})} @font-face{font-family:Sarabun;src:url(data:font/ttf;base64,${mediumFont});font-weight:600} @page{size:A4 portrait;margin:10mm}html,body{margin:0;padding:0;background:white} ${cleanlinessDailyCss}</style></head><body>${cleanlinessDailyBody({date,overview,supabaseUrl,imageData})}</body></html>`;
 }
 
 // Shared by the browser's print action and the server PDF renderer.
