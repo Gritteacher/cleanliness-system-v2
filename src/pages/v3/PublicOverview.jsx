@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Icon from '../../components/Icon.jsx';
 import { photoPreviewUrl } from '../../utils/photoCompression.js';
+import {cleanlinessDailyBody, cleanlinessDailyCss, fitCleanlinessSheet} from '../../../shared/cleanlinessDailyLayout.mjs';
 
 function thaiDate(value) {
   return new Intl.DateTimeFormat('th-TH', { dateStyle: 'long', timeZone: 'Asia/Bangkok' }).format(new Date(`${value}T12:00:00+07:00`));
@@ -19,10 +20,26 @@ function displayScore(value) {
 
 export default function PublicOverview({ data, loading, date, onDateChange, onRefresh, navigate }) {
   const [activePhoto, setActivePhoto] = useState(null);
+  const printRef=useRef(null);
+  const [printError,setPrintError]=useState('');
+  const [printing,setPrinting]=useState(false);
   const dutyTeam = data?.scheduledTeam || null;
   const score = data?.score || null;
   const rooms = data?.rooms || [];
   const combinedScore = score?.cleanliness_score == null || score?.attendance_score == null ? null : Number(score.cleanliness_score) + Number(score.attendance_score);
+
+  async function printDaily(){
+    setPrinting(true);setPrintError('');
+    const node=printRef.current;
+    try{
+      await document.fonts.ready;
+      node.classList.add('clean-measuring');
+      if(!fitCleanlinessSheet(node.querySelector('.clean-sheet')))throw new Error('รายละเอียดมีมากเกินหนึ่งหน้า กรุณาย่อหมายเหตุในรายงานก่อนส่งออก');
+      node.classList.remove('clean-measuring');
+      window.print();
+    }catch(error){setPrintError(error.message);}
+    finally{node.classList.remove('clean-measuring');setPrinting(false);}
+  }
 
   return (
     <div className="page-container public-page">
@@ -34,9 +51,10 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
           <div className="hero-actions">
             <label className="date-control">
               <Icon name="calendar" />
-              <input type="date" value={date} onInput={(event) => onDateChange(event.currentTarget.value)} onChange={(event) => onDateChange(event.target.value)} />
+              <input type="date" value={date} disabled={printing} onInput={(event) => onDateChange(event.currentTarget.value)} onChange={(event) => onDateChange(event.target.value)} />
             </label>
             <button className="button button-secondary" type="button" onClick={onRefresh}><Icon name="refresh" /> รีเฟรช</button>
+            <button className="button button-secondary" type="button" onClick={printDaily} disabled={loading||printing||data?.date!==date}>ส่งออก PDF</button>
           </div>
         </div>
         <div className="hero-visual" aria-hidden="true">
@@ -46,6 +64,8 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
           <div className="hero-score"><small>ประจำวันที่</small><strong>{thaiDate(date)}</strong><span>{dutyTeam ? `${dutyTeam.short_name} · ${rooms.length} พื้นที่ · อัปเดตสด` : 'ไม่มีคณะเข้าเวรตามตาราง'}</span></div>
         </div>
       </section>
+
+      {printError?<div className="global-error" role="alert">{printError}</div>:null}
 
       {loading ? <div className="room-card-grid public-loading-grid">{[1, 2, 3].map((item) => <div className="room-card-skeleton" key={item} />)}</div> : dutyTeam ? <>
         <section className="duty-overview" style={{ '--team': dutyTeam.accent_color, '--team-soft': dutyTeam.soft_color }}>
@@ -81,6 +101,19 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
         <button className="photo-lightbox-close" type="button" onClick={() => setActivePhoto(null)} aria-label="ปิดภาพขนาดใหญ่">×</button>
         <figure onClick={(event) => event.stopPropagation()}><img src={activePhoto.url} alt={`ภาพพื้นที่ ${activePhoto.label}`} /><figcaption>{activePhoto.label}</figcaption></figure>
       </div> : null}
+      <style>{`${cleanlinessDailyCss}
+        .clean-print{display:none}
+        .clean-print.clean-measuring{display:block;position:fixed;left:-10000px;top:0;width:190mm}
+        @media print{
+          @page{size:A4 portrait;margin:10mm}
+          html,body,#root,.app-shell,.app-shell>main{margin:0!important;padding:0!important;background:#fff!important;width:100%!important;min-height:0!important}
+          .app-header,.topbar,.app-footer,.mobile-nav,.global-error,.photo-lightbox{display:none!important}
+          .public-page{width:190mm!important;margin:0!important;padding:0!important;max-width:none!important}
+          .public-page>:not(.clean-print){display:none!important}
+          .public-page>.clean-print{display:block!important;position:static!important}
+          .clean-sheet{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        }`}</style>
+      <div className="clean-print" aria-hidden="true" ref={printRef} dangerouslySetInnerHTML={{__html:cleanlinessDailyBody({date,overview:data||{}})}} />
     </div>
   );
 }

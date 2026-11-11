@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { launchPdfBrowser, pdfEnvironment } from '../../../shared/pdfRuntime.mjs';
-import { pdfAttributionFooter } from './pdfAttribution.mjs';
+import { launchPdfBrowser, pdfEnvironment, readPdfFont } from '../../../shared/pdfRuntime.mjs';
+import { cleanlinessDate, cleanlinessDailyHtml, fitCleanlinessSheet } from '../../../shared/cleanlinessDailyLayout.mjs';
 
 const USERNAME_EMAIL_DOMAIN = 'tsn.local';
 
@@ -58,99 +58,32 @@ export async function validateSystemLogin(username, password) {
   return data.user;
 }
 
-export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}) {
-  const siteUrl = getSiteUrl();
-  const targetUrl = new URL(siteUrl);
-  targetUrl.searchParams.set('pdf', '1');
-  targetUrl.searchParams.set('date', date);
-
+export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}, test = {}) {
+  cleanlinessDate(date);
+  const env=pdfEnvironment();
+  let overview=test.overview;
+  if(!overview){
+    const url=env.VITE_SUPABASE_URL||env.SUPABASE_URL,key=env.VITE_SUPABASE_ANON_KEY||env.SUPABASE_ANON_KEY;
+    if(!url||!key)throw new Error('ยังไม่ได้ตั้งค่าการเชื่อมต่อระบบ');
+    // Exactly the same public, RLS-protected RPC as the public scoreboard.
+    const client=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+    const {data,error}=await client.rpc('cs_public_live_overview',{p_date:date}).abortSignal(AbortSignal.timeout(10000));
+    if(error)throw new Error('โหลดคะแนนไม่สำเร็จ กรุณาลองอีกครั้ง');
+    overview=data||{};
+  }
+  const [regular,medium]=await Promise.all([readPdfFont('Sarabun-Regular.ttf'),readPdfFont('Sarabun-Medium.ttf')]);
+  const html=cleanlinessDailyHtml({date,overview,regularFont:regular.toString('base64'),mediumFont:medium.toString('base64')});
   let browser;
-
   try {
-    browser = await launchPdfBrowser();
-
-    const page = await browser.newPage({
-      viewport: {
-        width: 1366,
-        height: 1800
-      }
-    });
-
-    await page.goto(targetUrl.toString(), {
-      waitUntil: 'domcontentloaded',
-      timeout: 90000
-    });
-
-    await page.waitForSelector('.public-page', {
-      timeout: 60000
-    });
-
-    // รอให้ข้อมูลและรูปภาพที่โหลดแบบ async แสดงผลก่อนสร้าง PDF
-    await page.waitForTimeout(3500);
-
-    await page.addStyleTag({
-      content: `
-        @page {
-          size: A4;
-          margin: 10mm;
-        }
-
-        .print-hide,
-        .side-nav,
-        .app-footer,
-        .header-actions,
-        .public-pdf-actions,
-        .modal-backdrop {
-          display: none !important;
-        }
-
-        .app {
-          padding-bottom: 0 !important;
-        }
-
-        .app-header {
-          position: static !important;
-        }
-
-        .page-shell {
-          width: 100% !important;
-          margin: 0 auto !important;
-        }
-
-        .room-card-grid,
-        .team-card-grid,
-        .stat-grid {
-          break-inside: avoid;
-        }
-
-        .mobile-card,
-        .team-score-card,
-        .stat-card,
-        .hero-card {
-          break-inside: avoid;
-        }
-      `
-    });
-
-    await page.emulateMedia({ media: 'print' });
-
-    const footerTemplate = await pdfAttributionFooter(page);
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      preferCSSPageSize: true,
-      displayHeaderFooter: true,
-      headerTemplate: '<span></span>',
-      footerTemplate,
-      margin: {
-        top: '10mm',
-        right: '8mm',
-        bottom: '10mm',
-        left: '8mm'
-      }
-    });
-
-    return Buffer.from(pdf);
+    browser=await launchPdfBrowser(test);
+    const page=await browser.newPage({viewport:{width:794,height:1123},javaScriptEnabled:false});
+    await page.route('**/*',route=>route.request().url().startsWith('data:')?route.continue():route.abort());
+    await page.setContent(html,{waitUntil:'load',timeout:20000});
+    await page.evaluate(()=>document.fonts.ready);
+    await page.emulateMedia({media:'print'});
+    const fits=await page.locator('.clean-sheet').evaluate(fitCleanlinessSheet);
+    if(!fits)throw new Error('รายละเอียดมีมากเกินหนึ่งหน้า กรุณาย่อหมายเหตุในรายงานก่อนส่งออก');
+    return Buffer.from(await page.pdf({format:'A4',landscape:false,printBackground:true,preferCSSPageSize:true,displayHeaderFooter:false,timeout:20000}));
   } finally {
     if (browser) {
       await browser.close();
