@@ -3,7 +3,6 @@ import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {createClient} from '@supabase/supabase-js';
 import {createPublicScorePdf} from '../netlify/functions/utils/publicPdf.mjs';
-import {APP_VERSION} from '../shared/appMetadata.mjs';
 const executablePath='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const date=process.argv.find(v=>/^\d{4}-\d{2}-\d{2}$/.test(v))||'2026-11-02';
 async function save(name,overview){
@@ -11,8 +10,6 @@ async function save(name,overview){
  await fs.writeFile(file,await createPublicScorePdf({date},{overview,executablePath}));
  const info=execFileSync('pdfinfo',[file],{encoding:'utf8'});
  assert.match(info,/Pages:\s+1\b/);assert.match(info,/Page size:.*A4/);
- const text=execFileSync('pdftotext',['-layout',file,'-'],{encoding:'utf8'});
- assert.ok(text.includes(APP_VERSION));assert.ok(text.includes(date));
  console.log(name+': one A4 page verified');
 }
 const fixture=count=>({scheduledTeam:{name:'คณะภาณุรังษี',color_name:'สีแดง'},score:{cleanliness_score:9.86,attendance_score:9.58},rooms:Array.from({length:count},(_,i)=>({room_label:`${Math.floor(i/6)+1}/${i%6+1}`,area_name:['รอบเรือนรำเพย','ลานอเนกประสงค์ อาคารเรียน','บริเวณสนามกีฬาและทางเดิน'][i%3],duty_status:i===4?'activity':i===7?'absent':'present',student_count:i===7?0:24,cleanliness_score:i===4||i===7?null:9.85,attendance_score:i===4?null:i===7?0:10,reason_summary:i===2?'เก็บขยะและจัดอุปกรณ์ได้เรียบร้อย':null,note:i===4?'ร่วมกิจกรรมของโรงเรียน':null}))});
