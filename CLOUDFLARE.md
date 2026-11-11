@@ -49,3 +49,20 @@ Run `npm test`, `wrangler deploy --dry-run`, check the public practice page and
 `/api/health`, and export a daily and date-range PDF using real read-only report
 data. Pace PDF smoke tests at least 20 seconds apart. Render and inspect each
 exported PDF with Poppler. Do not create production test reports or send mail.
+
+## Daily cleanliness report (2.4.1)
+
+The public cleanliness page's Export PDF button uses browser printing (choose
+Save as PDF), so this action does not consume Browser Run time. It prints only
+the selected day's owner, canonical summary scores and all area rows, not the
+photo-card webpage. The existing authenticated `create-public-pdf` endpoint
+uses the same layout and reads the existing public overview RPC directly;
+it no longer navigates to the home/menu page or waits a fixed number of seconds.
+Authentication on that endpoint is unchanged. No scoring formula changed.
+
+Both paths fit A4 portrait with bundled Thai fonts on the server and a compact
+table when needed. They preserve rows/remarks and fail visibly rather than clip
+text if unusually long details cannot fit legibly on a single page.
+Run `node tests/renderCleanlinessDaily.mjs` for synthetic 12/25-area and no-duty
+checks; add `--live YYYY-MM-DD` to verify a read-only day's public data using
+the public Supabase client settings from a correctly configured local build.
