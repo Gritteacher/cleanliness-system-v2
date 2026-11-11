@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { launchPdfBrowser, pdfEnvironment, readPdfFont } from '../../../shared/pdfRuntime.mjs';
 import { cleanlinessDate, cleanlinessDailyHtml, fitCleanlinessSheet, prepareCleanlinessImages } from '../../../shared/cleanlinessDailyLayout.mjs';
 import {loadCleanlinessImages} from './cleanlinessPdfImages.mjs';
+import {cleanlinessPdfFilename,cleanlinessPdfDisposition} from '../../../shared/cleanlinessPdfFilename.mjs';
 
 const USERNAME_EMAIL_DOMAIN = 'tsn.local';
 
@@ -59,7 +60,7 @@ export async function validateSystemLogin(username, password) {
   return data.user;
 }
 
-export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}, test = {}) {
+export async function createPublicScorePdf({ date = getBangkokDateISO(), returnMetadata = false } = {}, test = {}) {
   cleanlinessDate(date);
   const env=pdfEnvironment();
   const supabaseUrl=test.supabaseUrl||env.VITE_SUPABASE_URL||env.SUPABASE_URL;
@@ -97,7 +98,8 @@ export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}, 
         image.src=canvas.toDataURL('image/jpeg',.92);await image.decode();
       }
     });
-    return Buffer.from(await page.pdf({format:'A4',landscape:false,printBackground:true,preferCSSPageSize:true,displayHeaderFooter:false,timeout:20000}));
+    const pdfBuffer=Buffer.from(await page.pdf({format:'A4',landscape:false,printBackground:true,preferCSSPageSize:true,displayHeaderFooter:false,timeout:20000}));
+    return returnMetadata?{pdfBuffer,fileName:cleanlinessPdfFilename(date,overview.scheduledTeam),contentDisposition:cleanlinessPdfDisposition(date,overview.scheduledTeam)}:pdfBuffer;
   } finally {
     if (browser) {
       await browser.close();

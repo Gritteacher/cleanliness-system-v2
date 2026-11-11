@@ -23,14 +23,13 @@ export default async function handler(request) {
 
     await validateSystemLogin(username, password);
 
-    const pdfBuffer = await createPublicScorePdf({ date });
-    const fileName = `public-score-${date}.pdf`;
+    const {pdfBuffer,contentDisposition} = await createPublicScorePdf({ date, returnMetadata:true });
 
     return new Response(pdfBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${fileName}"`,
+        'Content-Disposition': contentDisposition,
         'Cache-Control': 'no-store'
       }
     });

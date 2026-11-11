@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import Icon from '../../components/Icon.jsx';
 import { photoPreviewUrl } from '../../utils/photoCompression.js';
 import {cleanlinessDailyBody, cleanlinessDailyCss, fitCleanlinessSheet, prepareCleanlinessImages} from '../../../shared/cleanlinessDailyLayout.mjs';
+import {cleanlinessPdfFilename,printWithFilename} from '../../../shared/cleanlinessPdfFilename.mjs';
 
 function thaiDate(value) {
   return new Intl.DateTimeFormat('th-TH', { dateStyle: 'long', timeZone: 'Asia/Bangkok' }).format(new Date(`${value}T12:00:00+07:00`));
@@ -37,7 +38,7 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
       node.classList.add('clean-measuring');
       if(!fitCleanlinessSheet(node.querySelector('.clean-sheet')))throw new Error('รายละเอียดมีมากเกินหนึ่งหน้า กรุณาย่อหมายเหตุในรายงานก่อนส่งออก');
       node.classList.remove('clean-measuring');
-      window.print();
+      printWithFilename(window,cleanlinessPdfFilename(date,dutyTeam));
     }catch(error){setPrintError(error.message);}
     finally{node.classList.remove('clean-measuring');setPrinting(false);}
   }

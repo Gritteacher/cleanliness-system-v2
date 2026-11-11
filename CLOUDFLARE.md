@@ -73,3 +73,11 @@ Browser printing waits for image decoding. Server exports fetch bounded image
 bytes only from the configured Supabase project's public storage, reject
 redirects, and embed export-only JPEG crops at up to 300 DPI. Missing/failed
 images retain their area's text and scores. Original uploads are unchanged.
+
+Version 2.4.3 suggests concise filenames such as `สะอาด_ม่วง_02-11-69.pdf`,
+using the selected Gregorian date converted to a two-digit Buddhist year and
+the actual scheduled team, including overrides. Browser printing sets the
+document title until `afterprint`; the final Save as PDF name remains under
+browser/OS control. Authenticated downloads supply the same Thai filename via
+RFC 5987 `filename*`, plus an ASCII fallback for older clients. Days without a
+scheduled team use `งดเวร` instead of an invented color.
