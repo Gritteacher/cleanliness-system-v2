@@ -1,0 +1,51 @@
+# Cloudflare Workers hosting
+
+Worker: `colorteam-activities`; production hostname: `colorteam.gritspace.cc`.
+The Supabase project and its RLS, Auth, Storage and existing data are unchanged.
+
+## Deployment
+
+Use Node 22.23.2 or later in the Node 22 series. Run `npm ci` and `npm test`.
+Provide `VITE_SUPABASE_URL` and the public `VITE_SUPABASE_ANON_KEY` when running
+`npm run build`, then `npx wrangler deploy`. Never use a service-role key in Vite.
+Set those same two values as Workers secrets (`wrangler secret bulk`, JSON on stdin).
+For the initial migration only, `node tools/cloudflare-settings.mjs build` and
+`node tools/cloudflare-settings.mjs upload` retrieve the production settings from
+the locally authenticated Netlify CLI account without printing their values.
+
+Assets are served by Workers Static Assets. Both `/api/…` and legacy
+`/.netlify/functions/…` PDF URLs are supported. `/api/health` identifies the host
+and deployed application version. Browser Run renders PDFs using bundled Thai
+fonts, and rejects non-Supabase image sources and redirects. Requests are bounded
+to 4 KB and rate-limited to six per minute per IP and endpoint.
+
+## Free only
+
+The account owner confirmed Workers Free. Do not upgrade the plan. Browser Run
+free allowance is 10 browser minutes per day, shared with other account usage;
+new browser sessions are limited to one per 20 seconds. Daily exhaustion returns
+429 without paid fallback; concurrent throttling asks the user to retry shortly.
+There is no Netlify fallback. This is a provider-enforced Free-plan limit, not a
+paid-plan budget cap. Reconfirm this policy before changing billing plans.
+
+`ENABLE_DAILY_EMAIL=false`, no cron triggers, and no anonymous email endpoint.
+Automatic mail must remain disabled unless the owner explicitly requests it.
+No Resend credential was copied to Workers.
+
+## Domain and rollback
+
+Change only the `colorteam.gritspace.cc` DNS/Worker mapping; preserve other zone
+records. Its previous DNS-only CNAME was `cleanlinesst-tsn.netlify.app` (Auto TTL).
+If the custom-domain API rejects the existing externally managed record, use a
+proxied CNAME plus the exact Worker route `colorteam.gritspace.cc/*` instead.
+To roll back a route deployment, remove that route and restore the CNAME to
+DNS-only. For a custom-domain deployment, remove the custom-domain mapping first,
+then restore the previous CNAME. Netlify may still be unavailable while its
+account credit limit is exhausted. Do not delete either host or Supabase data.
+
+## Verification
+
+Run `npm test`, `wrangler deploy --dry-run`, check the public practice page and
+`/api/health`, and export a daily and date-range PDF using real read-only report
+data. Pace PDF smoke tests at least 20 seconds apart. Render and inspect each
+exported PDF with Poppler. Do not create production test reports or send mail.

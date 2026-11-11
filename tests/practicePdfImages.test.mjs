@@ -5,7 +5,7 @@ const base='https://example.supabase.co',root=base+'/storage/v1/object/public/pr
 const options={start:'2026-11-05',end:'2026-11-05',teamIds:['maen']};
 const report={id:'latest',team_id:'maen',duty_date:'2026-11-05',created_at:'2026-11-05T12:00:00Z'};
 test('fetches every full image in latest report and never fetches old or unselected reports',async()=>{
- const calls=[],original=globalThis.fetch;globalThis.fetch=async url=>{calls.push(url);return new Response(new Uint8Array([255,216,255,217]));};
+ const calls=[],original=globalThis.fetch;globalThis.fetch=async (url,init)=>{assert.equal(init.redirect,'manual');calls.push(url);return new Response(new Uint8Array([255,216,255,217]));};
  try{
   const photos=Array.from({length:6},(_,i)=>({full:root+i+'.jpg',thumbnail:root+i+'.thumb.jpg'}));
   const images=await imageDataForReports([{...report,photos},{...report,id:'old',created_at:'2026-11-05T10:00:00Z',photos:[{full:root+'old.jpg'}]},{...report,team_id:'phanu',photos:[{full:root+'other.jpg'}]}],options,base);
@@ -22,4 +22,8 @@ test('falls back to thumbnail only when full image fails and refuses arbitrary o
 test('oversized storage objects are not embedded',async()=>{
  const original=globalThis.fetch;globalThis.fetch=async()=>new Response(new Uint8Array(524289));
  try{assert.equal((await imageDataForReports([{...report,photos:[{full:root+'huge.jpg'}]}],options,base)).size,0);}finally{globalThis.fetch=original;}
+});
+test('redirects from trusted storage never escape to another origin',async()=>{
+ const original=globalThis.fetch,calls=[];globalThis.fetch=async(url,init)=>{calls.push(url);assert.equal(init.redirect,'manual');return new Response(null,{status:302,headers:{Location:'https://evil.test/private'}});};
+ try{assert.equal((await imageDataForReports([{...report,photos:[{full:root+'redirect.jpg'}]}],options,base)).size,0);assert.deepEqual(calls,[root+'redirect.jpg']);}finally{globalThis.fetch=original;}
 });

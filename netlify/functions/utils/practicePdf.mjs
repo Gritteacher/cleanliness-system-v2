@@ -1,8 +1,5 @@
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
-import chromium from '@sparticuz/chromium';
-import { chromium as playwrightChromium } from 'playwright-core';
+import { readPdfFont, launchPdfBrowser, pdfEnvironment } from '../../../shared/pdfRuntime.mjs';
 import { practicePdfOptions } from '../../../src/utils/practicePdfOptions.js';
 import { practicePdfHtml, safePracticePhoto, combinedPracticeReports } from './practicePdfLayout.mjs';
 import { pdfAttributionFooter } from './pdfAttribution.mjs';
@@ -31,7 +28,9 @@ export async function imageDataForReports(reports, options, supabaseUrl) {
       for(const source of [...new Set([photo.full,photo.thumbnail].filter(Boolean))]) {
         const url=safePracticePhoto(source,supabaseUrl);if(!url)continue;
         try {
-        const response=await fetch(url,{redirect:'error',signal:AbortSignal.any([deadline,AbortSignal.timeout(6000)])});
+        // Workers does not support redirect:"error". Manual mode plus the
+        // non-2xx check below rejects redirects without ever following them.
+        const response=await fetch(url,{redirect:'manual',signal:AbortSignal.any([deadline,AbortSignal.timeout(6000)])});
         if(!response.ok || Number(response.headers.get('content-length'))>524288)continue;
         const reader=response.body.getReader(),chunks=[];let size=0;
         while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>524288){await reader.cancel();throw new Error('Image too large');}chunks.push(value);}
@@ -47,20 +46,21 @@ export async function imageDataForReports(reports, options, supabaseUrl) {
 
 export async function createPracticePdf(input, test = {}) {
   const options=practicePdfOptions(input);
-  const supabaseUrl=test.supabaseUrl || process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const anon=process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  const env=pdfEnvironment();
+  const supabaseUrl=test.supabaseUrl || env.VITE_SUPABASE_URL || env.SUPABASE_URL;
+  const anon=env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY;
   if(!supabaseUrl || (!anon&&!test.reports))throw new Error('ยังไม่ได้ตั้งค่าการเชื่อมต่อระบบ');
   // Use public RLS, never a service role or a user's session.
   const reports=test.reports || await loadPublishedPracticeReports(createClient(supabaseUrl,anon,{auth:{persistSession:false,autoRefreshToken:false}}),options);
   const [regular,medium,imageData]=await Promise.all([
-    readFile(resolve('netlify/assets/Sarabun-Regular.ttf')),
-    readFile(resolve('netlify/assets/Sarabun-Medium.ttf')),
+    readPdfFont('Sarabun-Regular.ttf'),
+    readPdfFont('Sarabun-Medium.ttf'),
     test.imageData || imageDataForReports(reports,options,supabaseUrl)
   ]);
   const html=practicePdfHtml({options,reports,imageData,supabaseUrl,regularFont:regular.toString('base64'),mediumFont:medium.toString('base64')});
   let browser;
   try {
-    browser=await playwrightChromium.launch({executablePath:test.executablePath || await chromium.executablePath(),args:test.executablePath?[]:chromium.args,headless:true});
+    browser=await launchPdfBrowser(test);
     const page=await browser.newPage({viewport:{width:794,height:1123},javaScriptEnabled:false});
     await page.route('**/*',route=>route.request().url().startsWith('data:')?route.continue():route.abort());
     await page.setContent(html,{waitUntil:'load',timeout:20000});
