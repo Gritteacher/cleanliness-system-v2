@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import chromium from '@sparticuz/chromium';
-import { chromium as playwrightChromium } from 'playwright-core';
+import { launchPdfBrowser, pdfEnvironment } from '../../../shared/pdfRuntime.mjs';
 import { pdfAttributionFooter } from './pdfAttribution.mjs';
 
 const USERNAME_EMAIL_DOMAIN = 'tsn.local';
@@ -23,7 +22,7 @@ export function usernameToEmail(username) {
 }
 
 export function getSiteUrl() {
-  const raw = process.env.PUBLIC_SITE_URL || process.env.URL || process.env.DEPLOY_PRIME_URL || '';
+  const raw = pdfEnvironment().PUBLIC_SITE_URL || pdfEnvironment().URL || pdfEnvironment().DEPLOY_PRIME_URL || '';
   if (!raw) {
     throw new Error('ยังไม่ได้ตั้งค่า PUBLIC_SITE_URL');
   }
@@ -32,8 +31,8 @@ export function getSiteUrl() {
 }
 
 export async function validateSystemLogin(username, password) {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  const supabaseUrl = pdfEnvironment().VITE_SUPABASE_URL || pdfEnvironment().SUPABASE_URL;
+  const supabaseAnonKey = pdfEnvironment().VITE_SUPABASE_ANON_KEY || pdfEnvironment().SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('ยังไม่ได้ตั้งค่าการเชื่อมต่อระบบ');
@@ -68,13 +67,7 @@ export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}) 
   let browser;
 
   try {
-    browser = await playwrightChromium.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      // Playwright expects headless to be boolean.
-      // @sparticuz/chromium may expose a string value, so force true.
-      headless: true
-    });
+    browser = await launchPdfBrowser();
 
     const page = await browser.newPage({
       viewport: {
@@ -166,13 +159,13 @@ export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}) 
 }
 
 export async function sendPdfEmail({ pdfBuffer, date, to }) {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = pdfEnvironment().RESEND_API_KEY;
   if (!apiKey) {
     throw new Error('ยังไม่ได้ตั้งค่า RESEND_API_KEY');
   }
 
-  const from = process.env.MAIL_FROM || 'ระบบตรวจความสะอาด <onboarding@resend.dev>';
-  const recipient = to || process.env.DAILY_PDF_TO || 'gritsn.th@gmail.com';
+  const from = pdfEnvironment().MAIL_FROM || 'ระบบตรวจความสะอาด <onboarding@resend.dev>';
+  const recipient = to || pdfEnvironment().DAILY_PDF_TO || 'gritsn.th@gmail.com';
   const fileName = `public-score-${date}.pdf`;
 
   const response = await fetch('https://api.resend.com/emails', {

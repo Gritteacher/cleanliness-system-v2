@@ -6,6 +6,9 @@ dist/
 output/pdf/
 tmp/pdfs/
 .netlify/
+.wrangler/
+.dev.vars
+.dev.vars.*
 
 # local environment variables
 .env

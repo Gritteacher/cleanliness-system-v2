@@ -1,9 +1,8 @@
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { readPdfFont } from '../../../shared/pdfRuntime.mjs';
 import { APP_ATTRIBUTION, APP_SHORT_NAME_EN } from '../../../shared/appMetadata.mjs';
 
 export async function pdfAttributionFooter(page) {
-  const font = (await readFile(resolve('netlify/assets/Sarabun-Regular.ttf'))).toString('base64');
+  const font = (await readPdfFont('Sarabun-Regular.ttf')).toString('base64');
   // Chromium's margin templates cannot inherit document fonts. Render this small
   // Thai footer with the bundled font so it stays readable on every page.
   const image = await page.evaluate(async ({ font, text }) => {
