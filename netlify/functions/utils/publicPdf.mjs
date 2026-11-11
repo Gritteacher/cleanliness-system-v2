@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { launchPdfBrowser, pdfEnvironment, readPdfFont } from '../../../shared/pdfRuntime.mjs';
-import { cleanlinessDate, cleanlinessDailyHtml, fitCleanlinessSheet } from '../../../shared/cleanlinessDailyLayout.mjs';
+import { cleanlinessDate, cleanlinessDailyHtml, fitCleanlinessSheet, prepareCleanlinessImages } from '../../../shared/cleanlinessDailyLayout.mjs';
+import {loadCleanlinessImages} from './cleanlinessPdfImages.mjs';
 
 const USERNAME_EMAIL_DOMAIN = 'tsn.local';
 
@@ -61,6 +62,7 @@ export async function validateSystemLogin(username, password) {
 export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}, test = {}) {
   cleanlinessDate(date);
   const env=pdfEnvironment();
+  const supabaseUrl=test.supabaseUrl||env.VITE_SUPABASE_URL||env.SUPABASE_URL;
   let overview=test.overview;
   if(!overview){
     const url=env.VITE_SUPABASE_URL||env.SUPABASE_URL,key=env.VITE_SUPABASE_ANON_KEY||env.SUPABASE_ANON_KEY;
@@ -71,8 +73,8 @@ export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}, 
     if(error)throw new Error('โหลดคะแนนไม่สำเร็จ กรุณาลองอีกครั้ง');
     overview=data||{};
   }
-  const [regular,medium]=await Promise.all([readPdfFont('Sarabun-Regular.ttf'),readPdfFont('Sarabun-Medium.ttf')]);
-  const html=cleanlinessDailyHtml({date,overview,regularFont:regular.toString('base64'),mediumFont:medium.toString('base64')});
+  const [regular,medium,imageData]=await Promise.all([readPdfFont('Sarabun-Regular.ttf'),readPdfFont('Sarabun-Medium.ttf'),test.imageData||loadCleanlinessImages(overview,supabaseUrl)]);
+  const html=cleanlinessDailyHtml({date,overview,supabaseUrl,imageData,regularFont:regular.toString('base64'),mediumFont:medium.toString('base64')});
   let browser;
   try {
     browser=await launchPdfBrowser(test);
@@ -80,9 +82,21 @@ export async function createPublicScorePdf({ date = getBangkokDateISO() } = {}, 
     await page.route('**/*',route=>route.request().url().startsWith('data:')?route.continue():route.abort());
     await page.setContent(html,{waitUntil:'load',timeout:20000});
     await page.evaluate(()=>document.fonts.ready);
+    await page.locator('.clean-sheet').evaluate(prepareCleanlinessImages);
     await page.emulateMedia({media:'print'});
     const fits=await page.locator('.clean-sheet').evaluate(fitCleanlinessSheet);
     if(!fits)throw new Error('รายละเอียดมีมากเกินหนึ่งหน้า กรุณาย่อหมายเหตุในรายงานก่อนส่งออก');
+    await page.evaluate(async()=>{
+      // Export-only cover crops at up to 300 DPI; keep original uploads intact.
+      for(const image of document.querySelectorAll('img.clean-photo')){
+        const box=image.getBoundingClientRect(),width=Math.min(image.naturalWidth,image.naturalHeight*box.width/box.height),height=width*box.height/box.width;
+        const ratio=Math.min(1,box.width*3.125/width),canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(width*ratio));canvas.height=Math.max(1,Math.round(height*ratio));
+        const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(image,(image.naturalWidth-width)*.5,(image.naturalHeight-height)*(image.naturalHeight>=image.naturalWidth?.3:.5),width,height,0,0,canvas.width,canvas.height);
+        image.src=canvas.toDataURL('image/jpeg',.92);await image.decode();
+      }
+    });
     return Buffer.from(await page.pdf({format:'A4',landscape:false,printBackground:true,preferCSSPageSize:true,displayHeaderFooter:false,timeout:20000}));
   } finally {
     if (browser) {
