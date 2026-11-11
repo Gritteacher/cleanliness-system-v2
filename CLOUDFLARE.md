@@ -66,3 +66,10 @@ text if unusually long details cannot fit legibly on a single page.
 Run `node tests/renderCleanlinessDaily.mjs` for synthetic 12/25-area and no-duty
 checks; add `--live YYYY-MM-DD` to verify a read-only day's public data using
 the public Supabase client settings from a correctly configured local build.
+
+Version 2.4.2 adds one representative public photo per area beside its score.
+Photos are cover-cropped without stretching; portrait focus is biased upward.
+Browser printing waits for image decoding. Server exports fetch bounded image
+bytes only from the configured Supabase project's public storage, reject
+redirects, and embed export-only JPEG crops at up to 300 DPI. Missing/failed
+images retain their area's text and scores. Original uploads are unchanged.

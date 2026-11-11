@@ -3,11 +3,12 @@ import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {createClient} from '@supabase/supabase-js';
 import {createPublicScorePdf} from '../netlify/functions/utils/publicPdf.mjs';
+import {loadCleanlinessImages} from '../netlify/functions/utils/cleanlinessPdfImages.mjs';
 const executablePath='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const date=process.argv.find(v=>/^\d{4}-\d{2}-\d{2}$/.test(v))||'2026-11-02';
-async function save(name,overview){
+async function save(name,overview,options={}){
  const file=`output/pdf/${name}.pdf`;
- await fs.writeFile(file,await createPublicScorePdf({date},{overview,executablePath}));
+ await fs.writeFile(file,await createPublicScorePdf({date},{overview,executablePath,...options}));
  const info=execFileSync('pdfinfo',[file],{encoding:'utf8'});
  assert.match(info,/Pages:\s+1\b/);assert.match(info,/Page size:.*A4/);
  console.log(name+': one A4 page verified');
@@ -25,7 +26,9 @@ if(process.argv.includes('--live')){
  const {data,error}=await createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}}).rpc('cs_public_live_overview',{p_date:date});
  if(error)throw new Error('Read-only overview query failed');
  console.log(JSON.stringify({date,areas:data?.rooms?.length||0,maxNote:Math.max(0,...(data?.rooms||[]).map(r=>(r.reason_summary||'').length+(r.note||'').length))}));
- await save('cleanliness-daily',data||{});
+ const imageData=await loadCleanlinessImages(data||{},url);
+ console.log(JSON.stringify({imagesLoaded:imageData.size}));
+ await save('cleanliness-daily',data||{},{supabaseUrl:url,imageData});
  console.log(JSON.stringify({live:true,date,areas:data?.rooms?.length||0,file:'output/pdf/cleanliness-daily.pdf'}));
 }else{
  for(const [name,overview] of [['standard',fixture(12)],['dense',fixture(25)],['no-duty',{}]]){
