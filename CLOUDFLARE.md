@@ -81,3 +81,34 @@ document title until `afterprint`; the final Save as PDF name remains under
 browser/OS control. Authenticated downloads supply the same Thai filename via
 RFC 5987 `filename*`, plus an ASCII fallback for older clients. Days without a
 scheduled team use `งดเวร` instead of an invented color.
+
+## Admin-only export policy (2.4.5)
+
+Only active application Admins see the cleanliness PDF print action or the
+practice PDF/PNG export dialog. Public practice reporting and viewing remain
+available without login. Non-admin pages do not mount the dedicated print sheet.
+The browser revalidates the current user and their database profile before an
+export. Practice exports carry the current session's Bearer access token.
+
+All three server entry points (`create-practice-pdf`, `create-public-pdf`, and
+`validate-pdf-login`), including their legacy URL aliases, validate that token
+with Supabase Auth `getUser` and then read the caller's `cs_profiles` row under
+their own RLS-protected session. The row must match the authenticated ID and
+have `role=admin` and `active=true`. Neither request-body roles/passwords nor
+`user_metadata` grant export permission. Missing/invalid tokens return 401;
+non-admin/inactive/missing profiles return 403; verification outages fail closed.
+No privileged key, new database function, grant, or RLS change is needed.
+
+The legacy Netlify mail handlers are also guarded and default to disabled.
+Cloudflare still exposes no mail HTTP endpoint and has no cron trigger. Keep
+`ENABLE_DAILY_EMAIL=false`. Do not enable any automatic rendering/mail as part
+of a deployment. Previously deployed legacy hosts must be redeployed with this
+policy before being reactivated; the current production domain is Workers.
+
+Run `node tests/practicePdfApi.mjs https://colorteam.gritspace.cc` to check all
+anonymous exports are refused without consuming Browser Run time. Optional
+authenticated PDF checks read `EXPORT_ADMIN_ACCESS_TOKEN` from the environment;
+never log, commit, or send this token in chat. Unit tests cover inactive admins,
+presidents, forged metadata, verification failures, and admin/non-admin UI.
+Screenshots and a browser's own print/save commands cannot be prevented for
+information that remains publicly viewable; this policy controls system exports.

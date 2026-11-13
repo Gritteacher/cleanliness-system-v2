@@ -1,6 +1,9 @@
 import { createPublicScorePdf, getBangkokDateISO, sendPdfEmail } from './utils/publicPdf.mjs';
+import {requireAdminExport,exportAccessResponse} from './utils/adminExportAuth.mjs';
 
 export default async function handler(request) {
+  try{await requireAdminExport(request);}catch(error){return exportAccessResponse(error);}
+  if(process.env.ENABLE_DAILY_EMAIL!=='true')return new Response('Automatic email is disabled',{status:410});
   try {
     let body = {};
     try {

@@ -1,4 +1,5 @@
-import { getBangkokDateISO, getSiteUrl, validateSystemLogin } from './utils/publicPdf.mjs';
+import { getBangkokDateISO, getSiteUrl } from './utils/publicPdf.mjs';
+import {requireAdminExport,exportAccessResponse} from './utils/adminExportAuth.mjs';
 
 export default async function handler(request) {
   if (request.method !== 'POST') {
@@ -8,26 +9,17 @@ export default async function handler(request) {
     });
   }
 
+  try{await requireAdminExport(request);}catch(error){return exportAccessResponse(error);}
   try {
     const body = await request.json();
-    const username = String(body.username || '').trim();
-    const password = String(body.password || '').trim();
     const date = body.date || getBangkokDateISO();
-
-    if (!username || !password) {
-      return new Response(JSON.stringify({ message: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json; charset=utf-8' }
-      });
-    }
-
-    await validateSystemLogin(username, password);
 
     const siteUrl = getSiteUrl();
     const printUrl = new URL(siteUrl);
     printUrl.searchParams.set('pdf', '1');
     printUrl.searchParams.set('date', date);
     printUrl.searchParams.set('autoprint', '1');
+    printUrl.hash='/cleanliness';
 
     return new Response(JSON.stringify({
       ok: true,

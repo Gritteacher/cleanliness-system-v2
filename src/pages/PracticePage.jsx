@@ -113,7 +113,7 @@ export default function PracticePage({ navigate, isAdmin = false }) {
     catch(err){setError(err.message);}finally{setAdminBusy(false);}
   }
   return <section className="page-container practice-page">
-    <div className="practice-toolbar"><button type="button" className="practice-back" onClick={() => navigate('/')}>← เลือกระบบ</button><div className="practice-toolbar-actions"><PracticePdfExport date={date}/>{isAdmin && <button type="button" className="practice-admin-link" onClick={() => navigate('/practice/summary')}><Icon name="chart" size={16} /> สรุปรายงานเวรฝึกซ้อม</button>}</div></div>
+    <div className="practice-toolbar"><button type="button" className="practice-back" onClick={() => navigate('/')}>← เลือกระบบ</button><div className="practice-toolbar-actions">{isAdmin&&<PracticePdfExport date={date} isAdmin={isAdmin}/>} {isAdmin && <button type="button" className="practice-admin-link" onClick={() => navigate('/practice/summary')}><Icon name="chart" size={16} /> สรุปรายงานเวรฝึกซ้อม</button>}</div></div>
     <header className="practice-page-heading practice-report-hero"><span className="eyebrow">COLOR TEAM · DUTY REPORT</span><h1>รายงานเวรดูแลนักเรียน<span>ฝึกซ้อมกิจกรรมคณะสี</span></h1><p><Icon name="calendar" size={16} /> 2–30 พฤศจิกายน 2569</p><small>เลือกวันที่ แล้วกดกรอกข้อมูลที่คณะสีของท่าน</small></header>
     {isAdmin&&<div className="practice-admin-toolbar"><span>จัดการรายงาน · Admin</span><button type="button" aria-pressed={deletedMode} onClick={()=>setShowDeleted(value=>!value)} disabled={adminBusy}>{deletedMode?'กลับรายงานปัจจุบัน':'รายการที่ลบ / กู้คืน'}</button></div>}
     {isAdmin&&adminNotice&&<p className="practice-success" role="status">{adminNotice}</p>}

@@ -71,6 +71,18 @@ export function isAdmin(user) {
   return user?.role === 'admin';
 }
 
+export async function getAdminExportHeaders(){
+ if(!supabase)throw new Error('ยังไม่ได้ตั้งค่าการเชื่อมต่อระบบ');
+ const {data:sessionData,error:sessionError}=await supabase.auth.getSession();
+ const token=sessionData?.session?.access_token;
+ if(sessionError||!token)throw new Error('กรุณาเข้าสู่ระบบด้วยบัญชี Admin เพื่อส่งออก');
+ const {data,error}=await supabase.auth.getUser(token);
+ if(error||!data?.user)throw new Error('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+ const profile=await fetchProfile(data.user.id);
+ if(!profile?.active||profile.role!=='admin')throw new Error('เฉพาะ Admin เท่านั้นที่ส่งออก PDF หรือรูปภาพได้');
+ return {'Content-Type':'application/json',Authorization:`Bearer ${token}`};
+}
+
 export function isPresident(user) {
   return user?.role === 'president';
 }
