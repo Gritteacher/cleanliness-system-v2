@@ -2,24 +2,27 @@ import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import { PRACTICE_START, PRACTICE_END, PRACTICE_TEAMS } from '../utils/practiceSchedule.js';
 import { practicePdfOptions } from '../utils/practicePdfOptions.js';
+import {getAdminExportHeaders} from '../utils/auth.js';
 
-export default function PracticePdfExport({ date }) {
+export default function PracticePdfExport({ date, isAdmin = false }) {
   const dialog=useRef(null);
   const [open,setOpen]=useState(false),[mode,setMode]=useState('day'),[start,setStart]=useState(date),[end,setEnd]=useState(date),[teamIds,setTeamIds]=useState(PRACTICE_TEAMS.map(t=>t.id));
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
   const [format,setFormat]=useState('pdf'),[progress,setProgress]=useState('');
   useEffect(()=>{if(!open)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';dialog.current.showModal();return()=>{dialog.current?.close();document.body.style.overflow=previous;};},[open]);
-  function show(){setStart(date);setEnd(date);setError('');setMessage('');setOpen(true);}
+  function show(){if(!isAdmin)return;setStart(date);setEnd(date);setError('');setMessage('');setOpen(true);}
   async function download(event){
-    event.preventDefault();if(busy)return;setError('');setMessage('');
+    event.preventDefault();if(busy||!isAdmin)return;setError('');setMessage('');
     let options;
     try{options=practicePdfOptions({start,end:mode==='day'?start:end,teamIds});}catch(err){setError(err.message);return;}
     setBusy(true);setProgress('กำลังโหลดรายงานและจัดหน้า…');
     try{
-      const response=await fetch('/.netlify/functions/create-practice-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({start:options.start,end:options.end,teamIds:options.teamIds}),signal:AbortSignal.timeout(90000)});
+      const headers=await getAdminExportHeaders();
+      const response=await fetch('/.netlify/functions/create-practice-pdf',{method:'POST',headers,body:JSON.stringify({start:options.start,end:options.end,teamIds:options.teamIds}),signal:AbortSignal.timeout(90000)});
       if(!response.ok){let detail;try{detail=await response.json();}catch{}throw new Error(response.status===429?'ส่งออกถี่เกินไป กรุณารอสักครู่แล้วลองใหม่':detail?.message||'สร้าง PDF ไม่สำเร็จ กรุณาลองอีกครั้ง');}
       if(!response.headers.get('content-type')?.includes('application/pdf'))throw new Error('ไฟล์ส่งออกไม่ถูกต้อง กรุณาลองอีกครั้ง');
       const pdf=await response.blob(),basename=`practice-duty-${options.start}-${options.end}`;
+      await getAdminExportHeaders();
       let output={blob:pdf,extension:'pdf'};
       if(format==='png'){
         setProgress('กำลังเตรียมส่งออกภาพ…');
@@ -30,6 +33,7 @@ export default function PracticePdfExport({ date }) {
       link.href=url;link.download=`${basename}.${output.extension}`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);setMessage(`สร้างไฟล์ ${output.extension.toUpperCase()} สำเร็จแล้ว สามารถเปิดจากรายการดาวน์โหลดได้`);
     }catch(err){setError(err.name==='TimeoutError'?'ใช้เวลาส่งออกนานเกินไป กรุณาเลือกช่วงวันที่สั้นลง':err.message);}finally{setBusy(false);}
   }
+  if(!isAdmin)return null;
   return <>
     <button type="button" className="practice-pdf-trigger" aria-haspopup="dialog" onClick={show}><Icon name="download" size={18}/> ส่งออก PDF / ภาพ</button>
     <dialog ref={dialog} className="practice-form-dialog practice-export-dialog" aria-labelledby="practice-pdf-title" onCancel={event=>{event.preventDefault();if(!busy)setOpen(false);}} onClose={()=>setOpen(false)}>

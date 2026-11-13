@@ -1,9 +1,11 @@
 import { createPracticePdf } from './utils/practicePdf.mjs';
 import { practicePdfOptions } from '../../src/utils/practicePdfOptions.js';
+import {requireAdminExport,exportAccessResponse} from './utils/adminExportAuth.mjs';
 const json=(message,status)=>new Response(JSON.stringify({message}),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 
 export default async function handler(request){
   if(request.method!=='POST')return json('Method not allowed',405);
+  try{await requireAdminExport(request);}catch(error){return exportAccessResponse(error);}
   let input;
   try{
     if(Number(request.headers.get('content-length'))>2048)return json('ข้อมูลส่งออกไม่ถูกต้อง',400);

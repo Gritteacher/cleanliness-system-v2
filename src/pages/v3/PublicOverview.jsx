@@ -3,6 +3,7 @@ import Icon from '../../components/Icon.jsx';
 import { photoPreviewUrl } from '../../utils/photoCompression.js';
 import {cleanlinessDailyBody, cleanlinessDailyCss, fitCleanlinessSheet, prepareCleanlinessImages} from '../../../shared/cleanlinessDailyLayout.mjs';
 import {cleanlinessPdfFilename,printWithFilename} from '../../../shared/cleanlinessPdfFilename.mjs';
+import {getAdminExportHeaders} from '../../utils/auth.js';
 
 function thaiDate(value) {
   return new Intl.DateTimeFormat('th-TH', { dateStyle: 'long', timeZone: 'Asia/Bangkok' }).format(new Date(`${value}T12:00:00+07:00`));
@@ -19,7 +20,7 @@ function displayScore(value) {
   return value == null ? '—' : Number(value).toFixed(1);
 }
 
-export default function PublicOverview({ data, loading, date, onDateChange, onRefresh, navigate }) {
+export default function PublicOverview({ data, loading, date, onDateChange, onRefresh, navigate, isAdmin = false }) {
   const [activePhoto, setActivePhoto] = useState(null);
   const printRef=useRef(null);
   const [printError,setPrintError]=useState('');
@@ -30,9 +31,11 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
   const combinedScore = score?.cleanliness_score == null || score?.attendance_score == null ? null : Number(score.cleanliness_score) + Number(score.attendance_score);
 
   async function printDaily(){
+    if(!isAdmin)return;
     setPrinting(true);setPrintError('');
     const node=printRef.current;
     try{
+      await getAdminExportHeaders();
       await document.fonts.ready;
       await prepareCleanlinessImages(node);
       node.classList.add('clean-measuring');
@@ -56,7 +59,7 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
               <input type="date" value={date} disabled={printing} onInput={(event) => onDateChange(event.currentTarget.value)} onChange={(event) => onDateChange(event.target.value)} />
             </label>
             <button className="button button-secondary" type="button" onClick={onRefresh}><Icon name="refresh" /> รีเฟรช</button>
-            <button className="button button-secondary" type="button" onClick={printDaily} disabled={loading||printing||data?.date!==date}>ส่งออก PDF</button>
+            {isAdmin&&<button className="button button-secondary" type="button" onClick={printDaily} disabled={loading||printing||data?.date!==date}>ส่งออก PDF</button>}
           </div>
         </div>
         <div className="hero-visual" aria-hidden="true">
@@ -103,7 +106,7 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
         <button className="photo-lightbox-close" type="button" onClick={() => setActivePhoto(null)} aria-label="ปิดภาพขนาดใหญ่">×</button>
         <figure onClick={(event) => event.stopPropagation()}><img src={activePhoto.url} alt={`ภาพพื้นที่ ${activePhoto.label}`} /><figcaption>{activePhoto.label}</figcaption></figure>
       </div> : null}
-      <style>{`${cleanlinessDailyCss}
+      {isAdmin&&<><style>{`${cleanlinessDailyCss}
         .clean-print{display:none}
         .clean-print.clean-measuring{display:block;position:fixed;left:-10000px;top:0;width:190mm}
         @media print{
@@ -115,7 +118,7 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
           .public-page>.clean-print{display:block!important;position:static!important}
           .clean-sheet{-webkit-print-color-adjust:exact;print-color-adjust:exact}
         }`}</style>
-      <div className="clean-print" aria-hidden="true" ref={printRef} dangerouslySetInnerHTML={{__html:cleanlinessDailyBody({date,overview:data||{},supabaseUrl:import.meta.env.VITE_SUPABASE_URL})}} />
+      <div className="clean-print" aria-hidden="true" ref={printRef} dangerouslySetInnerHTML={{__html:cleanlinessDailyBody({date,overview:data||{},supabaseUrl:import.meta.env.VITE_SUPABASE_URL})}} /></>}
     </div>
   );
 }

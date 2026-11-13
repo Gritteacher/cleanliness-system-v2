@@ -90,7 +90,7 @@ export default function App() {
 
   let page;
   if (route === '/') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main><SystemHome navigate={navigate} /></main><AppFooter /></div>;
-  if (route === '/practice') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main><PracticePage navigate={navigate} isAdmin={user?.role === 'admin'} /></main><AppFooter /></div>;
+  if (route === '/practice') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main><PracticePage navigate={navigate} isAdmin={user?.role === 'admin' && user?.active === true} /></main><AppFooter /></div>;
   if (route === '/practice/summary') return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} /><main>{authenticated(<PracticeSummary navigate={navigate} />, true)}</main><AppFooter /></div>;
   if (route === '/login') page = user ? <WorkspacePage user={user} data={workspace} loading={workspaceLoading} date={date} onDateChange={setDate} onRefresh={refreshWorkspace} navigate={navigate} /> : <LoginPage onLogin={handleLogin} navigate={navigate} />;
   else if (route === '/workspace') page = authenticated(<WorkspacePage user={user} data={workspace} loading={workspaceLoading} date={date} onDateChange={setDate} onRefresh={refreshWorkspace} navigate={navigate} />);
@@ -98,7 +98,7 @@ export default function App() {
   else if (route === '/admin/accounts') page = authenticated(<AdminAccountsPage navigate={navigate} />, true);
   else if (route === '/admin') page = authenticated(<AdminSetupPage data={workspace} onRefresh={refreshWorkspace} navigate={navigate} />, true);
   else if (route === '/account') page = authenticated(<AccountPage user={user} onUpdated={refreshProfile} onLogout={handleLogout} />);
-  else page = <PublicOverview data={publicData} loading={publicLoading} date={date} onDateChange={setDate} onRefresh={refreshPublic} navigate={navigate} />;
+  else page = <PublicOverview data={publicData} loading={publicLoading} date={date} onDateChange={setDate} onRefresh={refreshPublic} navigate={navigate} isAdmin={user?.role === 'admin' && user?.active === true} />;
 
   return <div className="app-shell"><AppHeader user={user} route={route} navigate={navigate} onLogout={handleLogout} />{error ? <div className="global-error">{error}</div> : null}<main>{page}</main><AppFooter /><BottomNav user={user} route={route} navigate={navigate} /></div>;
 }
