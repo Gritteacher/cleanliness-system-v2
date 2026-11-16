@@ -11,9 +11,15 @@
 .system-home-colors i { width: 24px; height: 5px; border-radius: 9px; background: #B38CF0; }.system-home-colors i:nth-child(2) { background: #719DF0; }.system-home-colors i:nth-child(3) { background: #F6A35A; }.system-home-colors i:nth-child(4) { background: #EF96BF; }.system-home-colors i:nth-child(5) { background: #EA8989; }
 .system-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 28px 0 16px; }
 .system-section-heading h2 { margin: 0; font-size: 18px; }.system-section-heading > span { padding: 4px 10px; border-radius: 99px; background: var(--green-100); color: var(--green-800); font-size: 12px; white-space: nowrap; }
-.system-choice-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+.system-choice-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; }
 .system-choice { min-width: 0; display: flex; flex-direction: column; align-items: stretch; padding: 26px; border: 1px solid var(--line); border-top: 4px solid var(--green-600); border-radius: 22px; color: var(--ink); background: white; text-align: left; box-shadow: var(--shadow-sm); transition: transform .2s, box-shadow .2s; }
 .system-choice.practice-choice { border-top-color: var(--yellow-500); }
+.system-choice.shirt-choice { border-top-color: var(--green-800); background: var(--green-50); text-decoration: none; }
+.shirt-choice .system-choice-icon { background: var(--yellow-100); }
+@media (min-width: 681px) and (max-width: 980px) {
+  .system-choice-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .shirt-choice { grid-column: 1 / -1; }
+}
 .system-choice:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
 .system-choice:focus-visible, .practice-page a:focus-visible { outline: 3px solid var(--yellow-500); outline-offset: 4px; }
 .system-choice-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
