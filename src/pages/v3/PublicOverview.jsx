@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import Icon from '../../components/Icon.jsx';
 import { photoPreviewUrl } from '../../utils/photoCompression.js';
+import { publicRoomPhotos } from '../../utils/cleanlinessPhotos.js';
 import {cleanlinessDailyBody, cleanlinessDailyCss, fitCleanlinessSheet, prepareCleanlinessImages} from '../../../shared/cleanlinessDailyLayout.mjs';
 import {cleanlinessPdfFilename,printWithFilename} from '../../../shared/cleanlinessPdfFilename.mjs';
 import {getAdminExportHeaders} from '../../utils/auth.js';
@@ -86,11 +87,13 @@ export default function PublicOverview({ data, loading, date, onDateChange, onRe
           <div className="section-heading"><div><span className="eyebrow">ภาพผลการปฏิบัติงาน</span><h2>พื้นที่ในความรับผิดชอบ</h2></div><span className="count-badge">{rooms.length} พื้นที่</span></div>
           {rooms.length ? <div className="room-card-grid">
             {rooms.map((room) => {
-              const imageUrl = room.photo_public_urls?.[0] || room.legacy_public_url || room.legacy_thumbnail_url || null;
+              const photos = publicRoomPhotos(room);
+              const imageUrl = photos[0] || null;
               const thumbnailUrl = imageUrl === room.legacy_public_url && room.legacy_thumbnail_url ? room.legacy_thumbnail_url : photoPreviewUrl(imageUrl);
               const roomCombined = room.cleanliness_score == null || room.attendance_score == null ? null : Number(room.cleanliness_score) + Number(room.attendance_score);
               return <article className="room-result-card" key={room.id} style={{ '--team': dutyTeam.accent_color, '--team-soft': dutyTeam.soft_color }}>
-                {imageUrl ? <button className="room-photo-frame" type="button" onClick={() => setActivePhoto({ url: imageUrl, label: room.room_label })} aria-label={`ดูภาพ ${room.room_label} ขนาดใหญ่`}><img src={thumbnailUrl} alt={`ภาพพื้นที่ ${room.room_label}`} loading="lazy" /><span><Icon name="sparkle" size={16} /> กดเพื่อดูภาพใหญ่</span></button> : <div className="room-photo-frame room-photo-placeholder"><span className="empty-icon"><Icon name="sparkle" /></span><strong>ยังไม่มีรูปภาพ</strong></div>}
+                {imageUrl ? <button className="room-photo-frame" type="button" onClick={() => setActivePhoto({ url: imageUrl, label: room.room_label })} aria-label={`ดูภาพ ${room.room_label} ขนาดใหญ่`}><img src={thumbnailUrl} alt={`ภาพพื้นที่ ${room.room_label}`} loading="lazy" /><span><Icon name="sparkle" size={16} /> ดูภาพใหญ่ · {photos.length} รูป</span></button> : <div className="room-photo-frame room-photo-placeholder"><span className="empty-icon"><Icon name="sparkle" /></span><strong>ยังไม่มีรูปภาพ</strong></div>}
+                {photos.length > 1 ? <div className="room-photo-thumbnails" aria-label={`รูปทั้งหมด ห้อง ${room.room_label}`}>{photos.map((url, index) => <button type="button" key={url} onClick={() => setActivePhoto({ url, label: `${room.room_label} · รูป ${index + 1}/${photos.length}` })} aria-label={`ดูรูปที่ ${index + 1} ห้อง ${room.room_label}`}><img src={photoPreviewUrl(url)} alt={`ภาพพื้นที่ ${room.room_label} รูปที่ ${index + 1}`} loading="lazy" /><span>{index + 1}</span></button>)}</div> : null}
                 <div className="room-result-body">
                   <div className="room-card-title"><div><span className="area-code">{room.area_code}</span><h3><small>ห้อง</small>{room.room_label}</h3><p className="room-area-name"><strong>พื้นที่</strong><span>{room.area_name}</span></p></div><span className={`status-chip ${room.duty_status}`}>{statusLabel(room.duty_status)}</span></div>
                   <div className="room-score-row"><span><small>ความสะอาด</small><strong>{displayScore(room.cleanliness_score)}</strong></span><span><small>บริหารจัดการ</small><strong>{displayScore(room.attendance_score)}</strong></span><span className="total"><small>รวม</small><strong>{displayScore(roomCombined)}</strong></span></div>
