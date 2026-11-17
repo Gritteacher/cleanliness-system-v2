@@ -18,6 +18,13 @@ test('public cleanliness page has no export button or dedicated print document',
 test('admin cleanliness page retains its export action and prepared print report',()=>{
  const html=render(Overview,{data:{date:'2026-11-02'},isAdmin:true});assert.ok(html.includes('ส่งออก PDF'));assert.ok(html.includes('class="clean-print"'));
 });
+test('public area card exposes all ten photos without exposing export',()=>{
+ const urls=Array.from({length:10},(_,i)=>`https://example.com/photo-${i}.jpg`);
+ const html=render(Overview,{data:{date:'2026-11-02',scheduledTeam:{name:'ทดสอบ',short_name:'สีม่วง'},rooms:[{id:'room',room_label:'1/1',photo_public_urls:urls}]}});
+ assert.equal((html.match(/aria-label="ดูรูปที่ /g)||[]).length,10);
+ for(const url of urls)assert.ok(html.includes(url));
+ assert.ok(!html.includes('ส่งออก PDF'));
+});
 test('PDF/PNG dialog defaults to denied; only an admin sees it',()=>{
  assert.equal(render(Export,{}),'');assert.equal(render(Export,{isAdmin:false}),'');
  const html=render(Export,{isAdmin:true});assert.ok(html.includes('ส่งออก PDF / ภาพ'));assert.ok(html.includes('ภาพ PNG'));

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Icon from '../../components/Icon.jsx';
 import { activeSubmissionPhotos } from '../../utils/submissionPhotos.js';
+import { MAX_CLEANLINESS_PHOTOS, remainingPhotoSlots, validatePhotoSelection } from '../../utils/cleanlinessPhotos.js';
 import {
   bangkokDate,
   deleteEvaluation,
@@ -106,6 +107,19 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
   const [uploadItems, setUploadItems] = useState([]);
   const version = useRef(0);
   const previewUrls = useRef(new Set());
+  const visiblePhotos = activeSubmissionPhotos(current?.photos).filter(photo => !removedPhotoIds.has(photo.id));
+  const photoCount = new Set([...visiblePhotos.map(photo => photo.id), ...uploadItems.filter(item => item.status === 'saved' && !removedPhotoIds.has(item.photoId)).map(item => item.photoId)]).size;
+  const remainingSlots = remainingPhotoSlots(photoCount);
+
+  useEffect(() => {
+    const loadedIds = new Set((current?.photos || []).map(photo => photo.id));
+    setUploadItems(previous => {
+      const confirmed = previous.filter(item => item.status === 'saved' && loadedIds.has(item.photoId));
+      if (!confirmed.length) return previous;
+      confirmed.forEach(item => { previewUrls.current.delete(item.previewUrl); URL.revokeObjectURL(item.previewUrl); });
+      return previous.filter(item => !confirmed.includes(item));
+    });
+  }, [current?.photos]);
 
   useEffect(() => {
     if (dirty) return;
@@ -157,6 +171,8 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
     if (!editable || photoOperation.current) { event.target.value = ''; return; }
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
+    try { validatePhotoSelection(photoCount, files); }
+    catch (error) { setPhotoNotice(error.message); event.target.value = ''; return; }
     photoOperation.current = true;
     setPhotoAction('upload');
     setPhotoNotice('');
@@ -167,31 +183,27 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
         previewUrls.current.add(previewUrl);
         return { id: `${Date.now()}-${index}-${file.name}`, file, previewUrl, status: 'queued', error: '' };
       });
-      setUploadItems((previous) => [...previous.filter((item) => item.status === 'error'), ...queued]);
+      setUploadItems((previous) => {
+        previous.filter(item => item.status === 'error').forEach(item => { previewUrls.current.delete(item.previewUrl); URL.revokeObjectURL(item.previewUrl); });
+        return [...previous.filter(item => item.status === 'saved'), ...queued];
+      });
       event.target.value = '';
       for (const item of queued) {
         setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'uploading' } : row));
         try {
-          await uploadSubmissionPhoto({
+          const uploaded = await uploadSubmissionPhoto({
             submissionId: current?.id,
             assignmentId: assignment.id,
             dutyDate: date,
             userId: user.id,
             file: item.file
           });
-          setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'saved' } : row));
+          setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'saved', photoId: uploaded.id } : row));
         } catch (error) {
           setUploadItems((previous) => previous.map((row) => row.id === item.id ? { ...row, status: 'error', error: error.message } : row));
         }
       }
       await onChanged?.({ background: true });
-      setUploadItems((previous) => {
-        previous.filter((item) => item.status !== 'error').forEach((item) => {
-          previewUrls.current.delete(item.previewUrl);
-          URL.revokeObjectURL(item.previewUrl);
-        });
-        return previous.filter((item) => item.status === 'error');
-      });
     } catch {
       setPhotoNotice('ยังตรวจสอบรูปที่อัปโหลดไม่ได้ กรุณาลองโหลดข้อมูลอีกครั้ง');
     } finally {
@@ -240,17 +252,19 @@ function DutyAreaCard({ assignment, current, date, user, teams, evaluations, edi
     </label>
 
     <div className="task-photo-block">
-      <div className="task-photo-list">{activeSubmissionPhotos(current?.photos).filter(photo => !removedPhotoIds.has(photo.id)).map((photo) => <span className="editable-photo" key={photo.id}>
+      <p className="photo-count">ภาพพื้นที่ {photoCount}/{MAX_CLEANLINESS_PHOTOS} รูป · เพิ่มได้อีก {remainingSlots} รูป</p>
+      <div className="task-photo-list">{visiblePhotos.map((photo) => <span className="editable-photo" key={photo.id}>
         <a href={photo.full_url || photo.view_url} target="_blank" rel="noreferrer"><img src={photo.view_url || photo.full_url} alt={`รูป ${assignment.room_label}`} /></a>
         {editable ? <button type="button" disabled={photoBusy} onClick={() => removePhoto(photo)} aria-label="ลบรูป">×</button> : null}
       </span>)}{uploadItems.map((item) => <span className={`upload-preview ${item.status}`} key={item.id} title={item.error || item.file.name}>
         <img src={item.previewUrl} alt={`ตัวอย่าง ${item.file.name}`} />
         <small>{item.status === 'error' ? 'ไม่สำเร็จ' : item.status === 'saved' ? 'เสร็จแล้ว' : 'กำลังส่ง'}</small>
       </span>)}</div>
+      {uploadItems.filter(item => item.status === 'error').map(item => <p className="photo-operation-notice" role="alert" key={item.id}>{item.file.name}: {item.error}</p>)}
       {photoNotice ? <p className="photo-operation-notice" role="status">{photoNotice}</p> : null}
       {editable ? <div className="photo-upload-actions">
-        <label className="photo-upload-button"><Icon name="image" size={16} /> เลือกรูปจากเครื่อง<input type="file" accept="image/*,.heic,.heif" multiple aria-label="เลือกรูปจากเครื่อง" onChange={uploadPhotos} disabled={photoBusy} /></label>
-        <label className="photo-upload-button camera"><Icon name="camera" size={16} /> ถ่ายรูป<input type="file" accept="image/*,.heic,.heif" capture="environment" aria-label="ถ่ายรูป" onChange={uploadPhotos} disabled={photoBusy} /></label>
+        <label className="photo-upload-button"><Icon name="image" size={16} /> เลือกรูปจากเครื่อง<input type="file" accept="image/*,.heic,.heif" multiple aria-label="เลือกรูปจากเครื่อง" onChange={uploadPhotos} disabled={photoBusy || !remainingSlots} /></label>
+        <label className="photo-upload-button camera"><Icon name="camera" size={16} /> ถ่ายรูป<input type="file" accept="image/*,.heic,.heif" capture="environment" aria-label="ถ่ายรูป" onChange={uploadPhotos} disabled={photoBusy || !remainingSlots} /></label>
         <small>{photoBusy ? (photoAction === 'delete' ? 'กำลังลบรูปภาพ…' : 'กำลังแปลง ย่อ และอัปโหลดทีละรูป…') : 'ย่อรูปอัตโนมัติ · HEIC/HEIF แปลงเป็น JPG'}</small>
       </div> : <small>ปิดการแก้ไขแล้ว</small>}
     </div>

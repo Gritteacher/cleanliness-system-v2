@@ -2,6 +2,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 import { compressSubmissionPhoto } from '../utils/photoCompression.js';
 import { photoExtension } from '../utils/photoInput.js';
 import { activeSubmissionPhotos, removeSubmissionPhoto } from '../utils/submissionPhotos.js';
+import {assertPhotoCapacity,photoUploadError} from '../utils/cleanlinessPhotos.js';
 
 function assertClient() {
   if (!isSupabaseConfigured || !supabase) {
@@ -154,12 +155,13 @@ export async function deleteEvaluation(evaluationId) {
 
 export async function uploadSubmissionPhoto({ submissionId, assignmentId, dutyDate, userId, file }) {
   assertClient();
-  const { full, thumbnail } = await compressSubmissionPhoto(file);
   let activeSubmissionId = submissionId;
   if (!activeSubmissionId) {
     const submission = await ensureDutySubmission(assignmentId, dutyDate);
     activeSubmissionId = submission.id;
   }
+  await assertPhotoCapacity(supabase,activeSubmissionId);
+  const { full, thumbnail } = await compressSubmissionPhoto(file);
   const basePath = `${dutyDate}/${assignmentId}/${userId}/photo-${crypto.randomUUID()}`;
   const path = `${basePath}.full.${photoExtension(full)}`;
   const thumbnailPath = `${basePath}.thumb.${photoExtension(thumbnail)}`;
@@ -177,7 +179,7 @@ export async function uploadSubmissionPhoto({ submissionId, assignmentId, dutyDa
     return data;
   } catch (error) {
     await bucket.remove([path, thumbnailPath]);
-    throw error;
+    throw new Error(photoUploadError(error));
   }
 }
 

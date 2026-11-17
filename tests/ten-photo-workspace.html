@@ -1,0 +1,18 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ten photo local QA</title><div id="root"></div>
+<script type="module">
+import React,{useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import WorkspacePage from '/src/pages/v3/WorkspacePage.jsx';
+import PublicOverview from '/src/pages/v3/PublicOverview.jsx';
+import {finishDelete,finishUpload} from '/src/services/v3Service.js';
+import '/src/styles/global.css';
+const picture=i=>'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280"><rect width="400" height="280" fill="${i%2?'#b4cdb6':'#ffedac'}"/><text x="70" y="150" font-size="50">PHOTO ${i+1}</text></svg>`);
+const assignment={id:'area-test',team_id:'maen',room_label:'1/1',area:{code:'A01',name:'พื้นที่ทดสอบบนเครื่อง'}};
+const photos=Array.from({length:10},(_,i)=>({id:'p'+i,view_url:picture(i),full_url:picture(i),deleted_at:null}));
+window.confirm=()=>true;
+function App(){const [count,setCount]=useState(10),[gallery,setGallery]=useState(false);
+const data={date:'2026-11-02',term:{name:'LOCAL ONLY'},teams:[],assignments:[assignment],schedules:[],overrides:[{team_id:'maen'}],evaluations:[],submissions:[{id:'submission-test',assignment_id:'area-test',duty_status:'present',student_count:24,photos:photos.slice(0,count)}]};
+return React.createElement(React.Fragment,null,React.createElement('aside',{style:{padding:12,background:'#fff4be'}},'LOCAL ONLY — no production writes',React.createElement('button',{onClick:()=>setCount(9)},'9 photos'),React.createElement('button',{onClick:()=>setCount(10)},'10 photos'),React.createElement('button',{onClick:()=>setGallery(!gallery)},'Toggle gallery'),React.createElement('button',{onClick:finishDelete},'Finish delete'),React.createElement('button',{onClick:finishUpload},'Finish upload'),React.createElement('button',{onClick:()=>{const input=document.querySelector('input[type=file]');Object.defineProperty(input,'files',{configurable:true,value:[new File(['test'],'one.jpg',{type:'image/jpeg'}),new File(['test'],'two.jpg',{type:'image/jpeg'})]});input.dispatchEvent(new Event('change',{bubbles:true}));}},'Select 2 test files')),
+gallery?React.createElement(PublicOverview,{date:'2026-11-02',data:{date:'2026-11-02',scheduledTeam:{name:'สีม่วง',short_name:'สีม่วง'},rooms:[{id:'room',room_label:'1/1',area_name:'พื้นที่ทดสอบ',photo_public_urls:photos.map(p=>p.full_url)}]},onDateChange:()=>{}}):React.createElement(WorkspacePage,{user:{id:'test',role:'admin'},data,date:'2026-11-02',loading:false,onDateChange:()=>{},onRefresh:async()=>{},navigate:()=>{}}));}
+createRoot(document.getElementById('root')).render(React.createElement(App));
+</script></html>
